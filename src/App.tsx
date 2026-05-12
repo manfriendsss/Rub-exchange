@@ -283,12 +283,12 @@ export default function App() {
     <div className="flex flex-col h-svh w-full bg-[#0f172a] text-slate-200 font-sans overflow-hidden select-none fixed inset-0">
       {/* Pushing Layout Wrapper */}
       <motion.div 
-        animate={{ y: isKeypadOpen ? -260 : 0 }}
+        animate={{ y: isKeypadOpen ? 0 : 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="flex flex-col flex-1 pb-6 relative z-0"
+        className="flex flex-col flex-1 relative z-0"
       >
         {/* Header */}
-        <header className="px-6 pt-12 pb-4 flex items-center justify-between shrink-0">
+        <header className={`px-6 pt-12 pb-4 flex items-center justify-between shrink-0 transition-all duration-500 overflow-hidden ${isKeypadOpen ? 'opacity-0 h-0 pt-0 pb-0' : 'opacity-100 h-auto'}`}>
           <div className="flex flex-col">
             <h1 className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">ĐỔI TIỀN</h1>
             <div 
@@ -317,10 +317,10 @@ export default function App() {
         </header>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col p-6 pt-2 overflow-hidden justify-start">
-          <div className="space-y-4 shrink-0 px-1">
+        <div className={`flex-1 flex flex-col px-6 pt-2 overflow-hidden transition-all duration-500 ${isKeypadOpen ? 'justify-end pb-[342px]' : 'justify-start pb-6'}`}>
+          <div className={`${isKeypadOpen ? 'space-y-2' : 'space-y-6'} shrink-0 px-1 transition-all duration-500`}>
             {/* Currency Selector Slider - Animated Dial */}
-            <div className={`flex items-center justify-between gap-1 py-4 overflow-hidden relative transition-opacity duration-300 ${isKeypadOpen ? 'opacity-0' : 'opacity-100'}`}>
+            <div className={`flex items-center justify-between gap-1 overflow-hidden relative transition-all duration-500 ${isKeypadOpen ? 'opacity-0 h-0 mb-0' : 'opacity-100 h-24 mt-4 py-4 mb-4'}`}>
               <button 
                 onClick={() => cycleCurrency('prev')} 
                 disabled={isKeypadOpen}
@@ -366,7 +366,7 @@ export default function App() {
             <div 
               onClick={() => setIsKeypadOpen(true)}
               className={`rounded-[32px] border transition-all duration-300 relative group active:scale-[0.98] cursor-pointer
-                ${isKeypadOpen ? 'bg-slate-800 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] mt-12 p-3 px-6' : 'bg-slate-800/40 border-slate-800 shadow-inner p-6'}`}
+                ${isKeypadOpen ? 'bg-slate-800 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] p-4 px-6' : 'bg-slate-800/40 border-slate-800 shadow-inner p-6'}`}
             >
               <div className="flex items-center justify-between mb-3 text-slate-500">
                 <label className="text-[10px] uppercase font-bold tracking-widest leading-none">
