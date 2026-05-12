@@ -1,6 +1,6 @@
 {
-  "name": "RUBtoVND - Chuyển đổi tiền tệ",
-  "description": "Ứng dụng quy đổi tiền Rub Nga sang VNĐ nhanh chóng, tỷ giá cố định 348, tối ưu cho di động với giao diện Dark Mode.",
+  "name": "Đổi tiền",
+  "description": "Ứng dụng quy đổi tiền tệ sang VNĐ và ngược lại với tỷ giá cập nhật online, hỗ trợ nhiều loại tiền phổ biến.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
