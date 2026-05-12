@@ -95,7 +95,7 @@ export default function App() {
 
   // Initialize and load rates + last currency
   useEffect(() => {
-    const tutorialSeen = localStorage.getItem('tutorial_seen_v1');
+    const tutorialSeen = localStorage.getItem('tutorial_seen_v2');
     if (!tutorialSeen) {
       setShowTutorial(true);
     }
@@ -176,13 +176,22 @@ export default function App() {
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      const dismissed = localStorage.getItem('pwa_install_dismissed');
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-      if (!dismissed && !isStandalone) setShowInstallPopup(true);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
+
+  // Effect to trigger PWA popup after tutorial
+  useEffect(() => {
+    if (!showTutorial && deferredPrompt) {
+      const dismissed = localStorage.getItem('pwa_install_dismissed');
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+      if (!dismissed && !isStandalone) {
+        const timer = setTimeout(() => setShowInstallPopup(true), 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [showTutorial, deferredPrompt]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
@@ -274,7 +283,7 @@ export default function App() {
     <div className="flex flex-col h-svh w-full bg-[#0f172a] text-slate-200 font-sans overflow-hidden select-none fixed inset-0">
       {/* Pushing Layout Wrapper */}
       <motion.div 
-        animate={{ y: isKeypadOpen ? -210 : 0 }}
+        animate={{ y: isKeypadOpen ? -260 : 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className="flex flex-col flex-1 pb-6 relative z-0"
       >
@@ -684,7 +693,7 @@ export default function App() {
                       setTutorialStep(prev => prev + 1);
                     } else {
                       setShowTutorial(false);
-                      localStorage.setItem('tutorial_seen_v1', 'true');
+                      localStorage.setItem('tutorial_seen_v2', 'true');
                     }
                   }}
                   className="flex-1 py-4 bg-emerald-600 text-white font-black rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-emerald-900/20"
@@ -696,7 +705,7 @@ export default function App() {
               <button 
                 onClick={() => {
                   setShowTutorial(false);
-                  localStorage.setItem('tutorial_seen_v1', 'true');
+                  localStorage.setItem('tutorial_seen_v2', 'true');
                 }}
                 className="mt-6 text-[10px] text-slate-600 font-bold uppercase tracking-widest hover:text-slate-400 transition-colors"
               >

@@ -9,6 +9,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Đổi tiền" />
     <link rel="apple-touch-icon" href="https://api.iconify.design/material-symbols:currency-vietnamese-dong.svg?color=%2310b981" />
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed: ', err));
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,0 +1,23 @@
+{
+  "name": "Đổi tiền",
+  "short_name": "Đổi tiền",
+  "description": "Ứng dụng quy đổi tiền tệ nhanh chóng",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "https://api.iconify.design/material-symbols:currency-vietnamese-dong.svg?color=%2310b981",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://api.iconify.design/material-symbols:currency-vietnamese-dong.svg?color=%2310b981",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
