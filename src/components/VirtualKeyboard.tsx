@@ -10,17 +10,80 @@ interface VirtualKeyboardProps {
   theme: 'light' | 'dark';
 }
 
+/**
+ * Simplified Telex processor for Vietnamese
+ * Handles basic combinations: aa, ee, oo, dd, aw, ow, uw and tones s, f, r, x, j
+ */
+function processTelex(text: string, key: string): string {
+  const lowerKey = key.toLowerCase();
+  const lastChar = text.slice(-1).toLowerCase();
+  const beforeLastChar = text.slice(-2, -1).toLowerCase();
+
+  // Tone mapping
+  const tones: Record<string, Record<string, string>> = {
+    'a': { 's': 'á', 'f': 'à', 'r': 'ả', 'x': 'ã', 'j': 'ạ' },
+    'ă': { 's': 'ắ', 'f': 'ằ', 'r': 'ẳ', 'x': 'ẵ', 'j': 'ặ' },
+    'â': { 's': 'ấ', 'f': 'ầ', 'r': 'ẩ', 'x': 'ẫ', 'j': 'ậ' },
+    'e': { 's': 'é', 'f': 'è', 'r': 'ẻ', 'x': 'ẽ', 'j': 'ẹ' },
+    'ê': { 's': 'ế', 'f': 'ề', 'r': 'ể', 'x': 'ễ', 'j': 'ệ' },
+    'i': { 's': 'í', 'f': 'ì', 'r': 'ỉ', 'x': 'ĩ', 'j': 'ị' },
+    'o': { 's': 'ó', 'f': 'ò', 'r': 'ỏ', 'x': 'õ', 'j': 'ọ' },
+    'ô': { 's': 'ố', 'f': 'ồ', 'r': 'ổ', 'x': 'ỗ', 'j': 'ộ' },
+    'ơ': { 's': 'ớ', 'f': 'ờ', 'r': 'ở', 'x': 'ỡ', 'j': 'ợ' },
+    'u': { 's': 'ú', 'f': 'ù', 'r': 'ủ', 'x': 'ũ', 'j': 'ụ' },
+    'ư': { 's': 'ứ', 'f': 'ừ', 'r': 'ử', 'x': 'ữ', 'j': 'ự' },
+    'y': { 's': 'ý', 'f': 'ỳ', 'r': 'ỷ', 'x': 'ỹ', 'j': 'ỵ' },
+  };
+
+  // Modifier mapping
+  const modifiers: Record<string, string> = {
+    'aa': 'â', 'ee': 'ê', 'oo': 'ô', 'dd': 'đ',
+    'aw': 'ă', 'ow': 'ơ', 'uw': 'ư', 'w': 'ư' 
+  };
+
+  // 1. Handle double keys (aa -> â, etc.)
+  if (key.toLowerCase() === lastChar && ['a', 'e', 'o', 'd'].includes(lastChar)) {
+    return text.slice(0, -1) + (key === key.toUpperCase() ? modifiers[lastChar + lastChar].toUpperCase() : modifiers[lastChar + lastChar]);
+  }
+
+  // 2. Handle 'w' modifier
+  if (lowerKey === 'w') {
+    if (lastChar === 'a') return text.slice(0, -1) + (key === key.toUpperCase() ? 'Ă' : 'ă');
+    if (lastChar === 'o') return text.slice(0, -1) + (key === key.toUpperCase() ? 'Ơ' : 'ơ');
+    if (lastChar === 'u') return text.slice(0, -1) + (key === key.toUpperCase() ? 'Ư' : 'ư');
+    if (text === '' || !/[a-z]/i.test(lastChar)) return text + (key === key.toUpperCase() ? 'Ư' : 'ư');
+  }
+
+  // 3. Handle tones (s, f, r, x, j)
+  if (['s', 'f', 'r', 'x', 'j'].includes(lowerKey)) {
+    // Find the vowel to apply tone to (simplified: check last or second to last)
+    let vowelIdx = -1;
+    if (tones[lastChar]) vowelIdx = text.length - 1;
+    else if (tones[beforeLastChar] && !tones[lastChar]) vowelIdx = text.length - 2;
+
+    if (vowelIdx !== -1) {
+      const charToChange = text[vowelIdx].toLowerCase();
+      const isUpper = text[vowelIdx] === text[vowelIdx].toUpperCase();
+      const newChar = tones[charToChange][lowerKey];
+      if (newChar) {
+        return text.slice(0, vowelIdx) + (isUpper ? newChar.toUpperCase() : newChar) + text.slice(vowelIdx + 1);
+      }
+    }
+  }
+
+  return text + key;
+}
+
 export function VirtualKeyboard({ isOpen, onClose, value, onChange, theme }: VirtualKeyboardProps) {
   const rows = [
     ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
     ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-    ['Ă', 'Â', 'Đ', 'Ê', 'Ô', 'Ơ', 'Ư'],
     ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACKSPACE']
   ];
 
   const handleKeyPress = (key: string) => {
     if ('vibrate' in navigator) navigator.vibrate(5);
-    onChange(prev => prev + key);
+    onChange(prev => processTelex(prev, key));
   };
 
   const handleBackspace = () => {
@@ -33,10 +96,8 @@ export function VirtualKeyboard({ isOpen, onClose, value, onChange, theme }: Vir
     onChange('');
   };
 
-  // Common button class to ensure "to đều nhau"
   const btnBaseClass = `h-11 sm:h-12 flex items-center justify-center text-sm font-black rounded-xl border transition-all active:scale-90`;
   const keyBtnClass = `${btnBaseClass} ${theme === 'dark' ? 'bg-slate-800/90 text-white border-slate-700 shadow-[0_2px_0_0_rgba(0,0,0,0.3)]' : 'bg-white text-slate-900 border-slate-200 shadow-[0_2px_0_0_rgba(0,0,0,0.05)]'}`;
-  const specialKeyBtnClass = `${btnBaseClass} ${theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_2px_0_0_rgba(0,0,0,0.2)]' : 'bg-emerald-50 text-emerald-700 border-emerald-100 shadow-[0_2px_0_0_rgba(0,0,0,0.02)]'}`;
 
   return (
     <AnimatePresence>
@@ -50,7 +111,7 @@ export function VirtualKeyboard({ isOpen, onClose, value, onChange, theme }: Vir
         >
           <div className="max-w-md mx-auto flex flex-col gap-1.5">
             {rows.map((row, rIdx) => (
-              <div key={rIdx} className={`flex justify-center gap-1 px-1 ${rIdx === 1 ? 'px-4' : ''} ${rIdx === 2 ? 'px-6' : ''}`}>
+              <div key={rIdx} className={`flex justify-center gap-1 px-1 ${rIdx === 1 ? 'px-4' : ''}`}>
                 {row.map(key => {
                   if (key === 'BACKSPACE') {
                     return (
@@ -64,14 +125,12 @@ export function VirtualKeyboard({ isOpen, onClose, value, onChange, theme }: Vir
                       </motion.button>
                     );
                   }
-                  // Check if it's a Vietnamese character
-                  const isVietnamese = ['Ă', 'Â', 'Đ', 'Ê', 'Ô', 'Ơ', 'Ư'].includes(key);
                   return (
                     <motion.button
                       key={key}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => handleKeyPress(key)}
-                      className={`${isVietnamese ? specialKeyBtnClass : keyBtnClass} flex-1 min-w-[30px]`}
+                      className={`${keyBtnClass} flex-1`}
                     >
                       {key}
                     </motion.button>
