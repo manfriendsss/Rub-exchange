@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, animate } from 'motion/react';
 import { X, ArrowDown, Coins, TrendingUp, Check, Copy, Delete, Settings2, ChevronRight, ChevronLeft, DollarSign, Calculator, Smartphone } from 'lucide-react';
 
@@ -60,6 +60,9 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallPopup, setShowInstallPopup] = useState(false);
+  const [pullY, setPullY] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [startY, setStartY] = useState(0);
 
   const tutorialPages = [
     {
@@ -129,7 +132,10 @@ export default function App() {
     // Auto update from online source if possible
     const updateRates = async () => {
       // If manual mode is on, don't auto-update from network (user wants to keep their saved manual rate)
-      if (savedAutoPreference === 'false') return;
+      const savedAutoPreference = localStorage.getItem('is_auto_rate');
+      if (savedAutoPreference === 'false' && !isRefreshing) return;
+
+      if (isRefreshing) setIsRefreshing(true);
 
       try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -158,11 +164,13 @@ export default function App() {
       } catch (error) {
         console.error('Failed to fetch online rates', error);
         // On error (offline), keep existing rates already loaded from localStorage
+      } finally {
+        setTimeout(() => setIsRefreshing(false), 500);
       }
     };
 
     updateRates();
-  }, []);
+  }, [isRefreshing]);
 
   // Save rates whenever they change manually
   useEffect(() => {
@@ -325,8 +333,70 @@ export default function App() {
     }).replace(/\*/g, '×').replace(/\//g, '÷');
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isKeypadOpen || isPickerOpen || isEditingRate || showTutorial) return;
+    setStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isKeypadOpen || isPickerOpen || isEditingRate || showTutorial) return;
+    
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
+    
+    // Only pull if at the top and pulling down
+    if (diff > 0 && window.scrollY === 0) {
+      // Resistance effect
+      const dampedDiff = Math.pow(diff, 0.8);
+      setPullY(dampedDiff);
+      
+      // Prevent default to disable browser pull-to-refresh if we're handling it
+      if (diff > 10) {
+        if (e.cancelable) e.preventDefault();
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullY > 60) {
+      setIsRefreshing(true);
+      if ('vibrate' in navigator) navigator.vibrate(20);
+    }
+    setPullY(0);
+  };
+
   return (
-    <div className="flex flex-col h-svh w-full bg-[#0f172a] text-slate-200 font-sans overflow-hidden select-none fixed inset-0">
+    <div 
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="flex flex-col h-svh w-full bg-[#0f172a] text-slate-200 font-sans overflow-hidden select-none fixed inset-0"
+    >
+      {/* Pull to refresh indicator */}
+      <motion.div 
+        style={{ height: pullY, opacity: pullY / 60 }}
+        className="flex items-center justify-center overflow-hidden w-full bg-slate-900/50"
+      >
+        <div className={`transition-transform duration-200 ${pullY > 60 ? 'rotate-180 scale-110' : 'rotate-0 scale-100'}`}>
+          <ArrowDown className={`w-6 h-6 ${pullY > 60 ? 'text-emerald-400' : 'text-slate-600'}`} />
+        </div>
+      </motion.div>
+
+      {/* Refreshing Overlay */}
+      <AnimatePresence>
+        {isRefreshing && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] bg-emerald-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-xs font-bold"
+          >
+            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ĐANG CẬP NHẬT TỶ GIÁ...
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Pushing Layout Wrapper */}
       <motion.div 
         animate={{ y: isKeypadOpen ? 0 : 0 }}
@@ -334,9 +404,9 @@ export default function App() {
         className="flex flex-col flex-1 relative z-0"
       >
         {/* Header */}
-        <header className={`px-6 pt-12 pb-4 flex items-center justify-between shrink-0 transition-all duration-500 overflow-hidden ${isKeypadOpen ? 'opacity-0 h-0 pt-0 pb-0' : 'opacity-100 h-auto'}`}>
+        <header className={`px-6 pt-10 pb-2 flex items-center justify-between shrink-0 transition-all duration-500 overflow-hidden ${isKeypadOpen ? 'h-16' : 'h-auto'}`}>
           <div className="flex flex-col">
-            <h1 className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">ĐỔI TIỀN</h1>
+            <h1 className={`text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-1 transition-all ${isKeypadOpen ? 'opacity-0 h-0' : 'opacity-100'}`}>ĐỔI TIỀN</h1>
               <div 
                 onClick={() => {
                   setTempRate(currentRate.toString());
@@ -349,7 +419,7 @@ export default function App() {
                 <Settings2 className="w-3 h-3 opacity-50 ml-1" />
               </div>
           </div>
-          <div className="flex gap-2">
+          <div className={`flex gap-2 transition-all ${isKeypadOpen ? 'scale-90' : 'scale-100'}`}>
              <button 
               onClick={() => {
                 setPickerType('target');
@@ -363,10 +433,10 @@ export default function App() {
         </header>
 
         {/* Main Content Area */}
-        <div className={`flex-1 flex flex-col px-4 pt-2 overflow-hidden transition-all duration-500 ${isKeypadOpen ? 'justify-end pb-[342px]' : 'justify-start pb-6'}`}>
-          <div className={`${isKeypadOpen ? 'space-y-2' : 'space-y-6'} shrink-0 px-1 transition-all duration-500`}>
+        <div className={`flex-1 flex flex-col px-4 pt-1 overflow-hidden transition-all duration-500 ${isKeypadOpen ? 'justify-start pb-[330px]' : 'justify-start pb-6'}`}>
+          <div className={`${isKeypadOpen ? 'space-y-1.5' : 'space-y-6'} shrink-0 px-1 transition-all duration-500`}>
             {/* Currency Selector Slider - Animated Dial */}
-            <div className={`flex items-center justify-between gap-1 overflow-hidden relative transition-all duration-500 ${isKeypadOpen ? 'opacity-0 h-0 mb-0' : 'opacity-100 h-24 mt-4 py-4 mb-4'}`}>
+            <div className={`flex items-center justify-between gap-1 overflow-hidden relative transition-all duration-500 ${isKeypadOpen ? 'opacity-0 h-0 mb-0 pointer-events-none' : 'opacity-100 h-24 mt-4 py-4 mb-4'}`}>
               <button 
                 onClick={() => cycleCurrency('prev')} 
                 disabled={isKeypadOpen}
