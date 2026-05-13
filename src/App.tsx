@@ -49,6 +49,7 @@ export default function App() {
   const [targetCurrency, setTargetCurrency] = useState<Currency>(CURRENCIES[0]); // Default to VND
   const [isReverse, setIsReverse] = useState(false);
   const [rates, setRates] = useState<Record<string, number>>({});
+  const [isAutoRate, setIsAutoRate] = useState<boolean>(true);
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
   const [isEditingRate, setIsEditingRate] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -99,6 +100,10 @@ export default function App() {
     if (!tutorialSeen) {
       setShowTutorial(true);
     }
+
+    const savedAutoPreference = localStorage.getItem('is_auto_rate');
+    const autoMode = savedAutoPreference === null ? true : savedAutoPreference === 'true';
+    setIsAutoRate(autoMode);
     
     const savedRates = localStorage.getItem('currency_rates_v3');
     if (savedRates) {
@@ -123,6 +128,9 @@ export default function App() {
     
     // Auto update from online source if possible
     const updateRates = async () => {
+      // If manual mode is on, don't auto-update from network (user wants to keep their saved manual rate)
+      if (savedAutoPreference === 'false') return;
+
       try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
         const data = await response.json();
@@ -140,7 +148,7 @@ export default function App() {
               if (usdToTarget) {
                 newRates[c.code] = Math.round(usdToVnd / usdToTarget);
               } else {
-                newRates[c.code] = rates[c.code] || c.defaultRate;
+                newRates[c.code] = savedRates ? JSON.parse(savedRates)[c.code] || c.defaultRate : c.defaultRate;
               }
             }
           });
@@ -149,6 +157,7 @@ export default function App() {
         }
       } catch (error) {
         console.error('Failed to fetch online rates', error);
+        // On error (offline), keep existing rates already loaded from localStorage
       }
     };
 
@@ -241,6 +250,33 @@ export default function App() {
     const newRate = parseFloat(tempRate);
     if (!isNaN(newRate) && newRate > 0) {
       setRates(prev => ({ ...prev, [selectedCurrency.code]: newRate }));
+      setIsAutoRate(false);
+      localStorage.setItem('is_auto_rate', 'false');
+      setIsEditingRate(false);
+    }
+  };
+
+  const setAutoMode = async () => {
+    setIsAutoRate(true);
+    localStorage.setItem('is_auto_rate', 'true');
+    
+    // Trigger immediate update when switching back to auto
+    try {
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await response.json();
+      const usdToVnd = data.rates.VND;
+      if (usdToVnd) {
+        const newRates: Record<string, number> = { ...rates };
+        const usdToTarget = data.rates[selectedCurrency.code];
+        if (usdToTarget) {
+          newRates[selectedCurrency.code] = Math.round(usdToVnd / usdToTarget);
+          setRates(newRates);
+          localStorage.setItem('currency_rates_v3', JSON.stringify(newRates));
+        }
+      }
+      setIsEditingRate(false);
+    } catch (error) {
+      console.error('Failed to update rate automatically', error);
       setIsEditingRate(false);
     }
   };
@@ -279,6 +315,16 @@ export default function App() {
     }).format(val);
   };
 
+  // Helper to format numbers inside an expression (with thousand separators)
+  const formatExpression = (val: string) => {
+    if (!val) return '0';
+    // Format numeric parts with dots for thousands (Vietnamese convention)
+    return val.replace(/(\d+)(\.\d+)?/g, (match, integerPart, decimalPart) => {
+      const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return decimalPart ? formattedInteger + decimalPart : formattedInteger;
+    }).replace(/\*/g, '×').replace(/\//g, '÷');
+  };
+
   return (
     <div className="flex flex-col h-svh w-full bg-[#0f172a] text-slate-200 font-sans overflow-hidden select-none fixed inset-0">
       {/* Pushing Layout Wrapper */}
@@ -291,17 +337,17 @@ export default function App() {
         <header className={`px-6 pt-12 pb-4 flex items-center justify-between shrink-0 transition-all duration-500 overflow-hidden ${isKeypadOpen ? 'opacity-0 h-0 pt-0 pb-0' : 'opacity-100 h-auto'}`}>
           <div className="flex flex-col">
             <h1 className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">ĐỔI TIỀN</h1>
-            <div 
-              onClick={() => {
-                setTempRate(currentRate.toString());
-                setIsEditingRate(true);
-              }}
-              className="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-lg text-[10px] font-mono border border-emerald-500/20 w-fit active:scale-95 transition-transform cursor-pointer"
-            >
-              <TrendingUp className="w-3 h-3" />
-              <span>Tỷ giá: {new Intl.NumberFormat('vi-VN').format(currentRate)} đ</span>
-              <Settings2 className="w-3 h-3 text-emerald-500/50 ml-1" />
-            </div>
+              <div 
+                onClick={() => {
+                  setTempRate(currentRate.toString());
+                  setIsEditingRate(true);
+                }}
+                className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg text-[10px] font-mono border w-fit active:scale-95 transition-all cursor-pointer ${isAutoRate ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}
+              >
+                <TrendingUp className="w-3 h-3" />
+                <span>Tỷ giá: {new Intl.NumberFormat('vi-VN').format(currentRate)} đ {!isAutoRate && '(Tùy chỉnh)'}</span>
+                <Settings2 className="w-3 h-3 opacity-50 ml-1" />
+              </div>
           </div>
           <div className="flex gap-2">
              <button 
@@ -317,7 +363,7 @@ export default function App() {
         </header>
 
         {/* Main Content Area */}
-        <div className={`flex-1 flex flex-col px-6 pt-2 overflow-hidden transition-all duration-500 ${isKeypadOpen ? 'justify-end pb-[342px]' : 'justify-start pb-6'}`}>
+        <div className={`flex-1 flex flex-col px-4 pt-2 overflow-hidden transition-all duration-500 ${isKeypadOpen ? 'justify-end pb-[342px]' : 'justify-start pb-6'}`}>
           <div className={`${isKeypadOpen ? 'space-y-2' : 'space-y-6'} shrink-0 px-1 transition-all duration-500`}>
             {/* Currency Selector Slider - Animated Dial */}
             <div className={`flex items-center justify-between gap-1 overflow-hidden relative transition-all duration-500 ${isKeypadOpen ? 'opacity-0 h-0 mb-0' : 'opacity-100 h-24 mt-4 py-4 mb-4'}`}>
@@ -365,20 +411,20 @@ export default function App() {
             {/* Amount Display */}
             <div 
               onClick={() => setIsKeypadOpen(true)}
-              className={`rounded-[32px] border transition-all duration-300 relative group active:scale-[0.98] cursor-pointer
-                ${isKeypadOpen ? 'bg-slate-800 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] p-4 px-6' : 'bg-slate-800/40 border-slate-800 shadow-inner p-6'}`}
+              className={`rounded-[24px] border transition-all duration-300 relative group active:scale-[0.98] cursor-pointer
+                ${isKeypadOpen ? 'bg-slate-800 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] p-3 px-5' : 'bg-slate-800/40 border-slate-800 shadow-inner p-4 px-5'}`}
             >
-              <div className="flex items-center justify-between mb-3 text-slate-500">
+              <div className="flex items-center justify-between mb-1 text-slate-500">
                 <label className="text-[10px] uppercase font-bold tracking-widest leading-none">
                   {isKeypadOpen ? 'ĐANG NHẬP SỐ TIỀN' : 'CHẠM ĐỂ NHẬP'} ({isReverse ? targetCurrency.code : selectedCurrency.code})
                 </label>
                 <Coins className={`w-4 h-4 transition-colors ${isKeypadOpen ? 'text-emerald-500' : 'opacity-20'}`} />
               </div>
-              <div className="flex items-center justify-between min-h-[60px]">
-                <div className="text-5xl font-bold tracking-tighter text-white font-mono break-all line-clamp-2 leading-none">
-                  {inputValue === '0' ? '0' : inputValue.replace(/\*/g, '×').replace(/\//g, '÷')}
+              <div className="flex items-center justify-between min-h-[44px]">
+                <div className="text-3xl font-bold tracking-tighter text-white font-mono break-all line-clamp-1 leading-none">
+                  {inputValue === '0' ? '0' : formatExpression(inputValue)}
                 </div>
-                <span className="text-2xl font-medium text-slate-600 ml-2 select-none shrink-0">{isReverse ? targetCurrency.symbol : selectedCurrency.symbol}</span>
+                <span className="text-xl font-medium text-slate-600 ml-2 select-none shrink-0">{isReverse ? targetCurrency.symbol : selectedCurrency.symbol}</span>
               </div>
               
               <AnimatePresence>
@@ -407,10 +453,10 @@ export default function App() {
             {/* Result Card */}
             <div 
               onClick={copyToClipboard}
-              className={`bg-slate-900 rounded-[32px] border border-emerald-500/30 shadow-[0_20px_50px_-20px_rgba(16,185,129,0.3)] relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer group
-                ${isKeypadOpen ? 'p-3 px-6' : 'p-6'}`}
+              className={`bg-slate-900 rounded-[24px] border border-emerald-500/30 shadow-[0_20px_50px_-20px_rgba(16,185,129,0.3)] relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer group
+                ${isKeypadOpen ? 'p-3 px-5' : 'p-4 px-5'}`}
             >
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex justify-between items-center mb-1">
                 <label className="text-emerald-500 text-[10px] uppercase font-bold tracking-widest block leading-none">
                   {isReverse ? selectedCurrency.name : targetCurrency.name} (Chạm sao chép)
                 </label>
@@ -424,11 +470,11 @@ export default function App() {
                   )}
                 </AnimatePresence>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="text-5xl font-bold tracking-tight text-white font-mono break-all leading-tight">
+              <div className="flex items-center justify-between min-h-[44px]">
+                <div className="text-3xl font-bold tracking-tight text-white font-mono break-all leading-none truncate">
                   {isReverse ? formatResult(convertedAmount) : <AnimatedNumber value={convertedAmount} />}
                 </div>
-                <span className="text-2xl font-bold text-emerald-500 ml-2 shrink-0">{isReverse ? selectedCurrency.symbol : targetCurrency.symbol}</span>
+                <span className="text-xl font-bold text-emerald-500 ml-2 shrink-0">{isReverse ? selectedCurrency.symbol : targetCurrency.symbol}</span>
               </div>
             </div>
           </div>
@@ -598,19 +644,30 @@ export default function App() {
                 <div className="text-[10px] text-slate-500 mt-1 font-bold">VNĐ / {selectedCurrency.code}</div>
               </div>
 
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setIsEditingRate(false)}
-                  className="flex-1 py-4 bg-slate-800 text-slate-400 font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all"
-                >
-                  HỦY
-                </button>
-                <button 
-                  onClick={handleRateUpdate}
-                  className="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-emerald-900/20"
-                >
-                  CẬP NHẬT
-                </button>
+              <div className="flex flex-col gap-3">
+                {!isAutoRate && (
+                  <button 
+                    onClick={setAutoMode}
+                    className="w-full py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] mb-1 active:scale-95 transition-all"
+                  >
+                    DÙNG TỶ GIÁ TỰ ĐỘNG
+                  </button>
+                )}
+                
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setIsEditingRate(false)}
+                    className="flex-1 py-4 bg-slate-800 text-slate-400 font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all"
+                  >
+                    HỦY
+                  </button>
+                  <button 
+                    onClick={handleRateUpdate}
+                    className="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-emerald-900/20"
+                  >
+                    LƯU THỦ CÔNG
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
