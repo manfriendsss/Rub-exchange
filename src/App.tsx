@@ -453,7 +453,7 @@ export default function App() {
                   ['7', '8', '9', '/'],
                   ['4', '5', '6', '*'],
                   ['1', '2', '3', '-'],
-                  ['.', '0', 'DEL', '+'],
+                  ['.', '0', '000', '+'],
                 ].map((row, rIdx) => (
                   <div key={rIdx} className="contents">
                     {row.map(key => (
@@ -461,11 +461,8 @@ export default function App() {
                         key={key}
                         onClick={() => {
                           if ('vibrate' in navigator) navigator.vibrate(5);
-                          if (key === 'DEL') {
-                            setInputValue(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
-                            return;
-                          }
                           setInputValue(prev => {
+                            if (prev === '0' && key === '000') return '0';
                             if (prev === '0' && !isNaN(Number(key))) return key;
                             if (prev.length > 22) return prev;
                             return prev + key;
@@ -474,30 +471,39 @@ export default function App() {
                         className={`h-11 sm:h-12 flex items-center justify-center text-xl font-bold rounded-2xl transition-all active:scale-95 border 
                           ${['/', '*', '-', '+'].includes(key) 
                             ? 'bg-slate-800 text-emerald-400 border-emerald-500/10' 
-                            : key === 'DEL'
-                              ? 'bg-slate-800/40 text-slate-500 border-slate-800'
-                              : 'bg-slate-800/50 text-white border-slate-800'}`}
+                            : 'bg-slate-800/50 text-white border-slate-800'}`}
                       >
-                        {key === '*' ? '×' : key === '/' ? '÷' : key === 'DEL' ? <Delete className="w-5 h-5" /> : key}
+                        {key === '*' ? '×' : key === '/' ? '÷' : key}
                       </button>
                     ))}
                   </div>
                 ))}
-                <button
-                  onClick={() => {
-                    if ('vibrate' in navigator) navigator.vibrate(5);
-                    setInputValue('0');
-                  }}
-                  className="h-11 sm:h-12 bg-red-500/5 text-red-400/80 border border-red-500/10 rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all"
-                >
-                  C
-                </button>
-                <button
-                  onClick={() => setIsKeypadOpen(false)}
-                  className="col-span-3 h-11 sm:h-12 bg-emerald-600 text-white font-black rounded-2xl border border-emerald-400/20 active:scale-95 transition-all text-sm uppercase tracking-[0.2em] flex items-center justify-center"
-                >
-                  XONG
-                </button>
+                <div className="grid grid-cols-4 gap-2 col-span-4">
+                  <button
+                    onClick={() => {
+                      if ('vibrate' in navigator) navigator.vibrate(5);
+                      setInputValue(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+                    }}
+                    className="h-11 sm:h-12 bg-slate-800/40 text-slate-500 border border-slate-800 rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all"
+                  >
+                    <Delete className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if ('vibrate' in navigator) navigator.vibrate(5);
+                      setInputValue('0');
+                    }}
+                    className="h-11 sm:h-12 bg-red-500/5 text-red-400/80 border border-red-500/10 rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all"
+                  >
+                    C
+                  </button>
+                  <button
+                    onClick={() => setIsKeypadOpen(false)}
+                    className="col-span-2 h-11 sm:h-12 bg-emerald-600 text-white font-black rounded-2xl border border-emerald-400/20 active:scale-95 transition-all text-sm uppercase tracking-[0.2em] flex items-center justify-center"
+                  >
+                    XONG
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
