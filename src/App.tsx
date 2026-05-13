@@ -1,33 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, animate } from 'motion/react';
-import { X, ArrowDown, Coins, TrendingUp, Check, Copy, Delete, Settings2, ChevronRight, ChevronLeft, DollarSign, Calculator, Smartphone, RefreshCw, Sun, Moon } from 'lucide-react';
+import { X, ArrowDown, Coins, TrendingUp, Check, Copy, Settings2, ChevronRight, ChevronLeft, DollarSign, Calculator, Smartphone, RefreshCw, Sun, Moon } from 'lucide-react';
 
-interface Currency {
-  code: string;
-  name: string;
-  symbol: string;
-  flag: string;
-  defaultRate: number;
-}
-
-const CURRENCIES: Currency[] = [
-  { code: 'VND', name: 'Việt Nam Đồng', symbol: '₫', flag: '🇻🇳', defaultRate: 1 },
-  { code: 'CNY', name: 'Nhân dân tệ', symbol: '¥', flag: '🇨🇳', defaultRate: 3520 },
-  { code: 'USD', name: 'Đô la Mỹ', symbol: '$', flag: '🇺🇸', defaultRate: 25450 },
-  { code: 'EUR', name: 'Euro', symbol: '€', flag: '🇪🇺', defaultRate: 27500 },
-  { code: 'JPY', name: 'Yên Nhật', symbol: '¥', flag: '🇯🇵', defaultRate: 164 },
-  { code: 'KRW', name: 'Won Hàn', symbol: '₩', flag: '🇰🇷', defaultRate: 18 },
-  { code: 'RUB', name: 'Rúp Nga', symbol: '₽', flag: '🇷🇺', defaultRate: 275 },
-  { code: 'THB', name: 'Bạt Thái', symbol: '฿', flag: '🇹🇭', defaultRate: 695 },
-  { code: 'LAK', name: 'Kíp Lào', symbol: '₭', flag: '🇱🇦', defaultRate: 1.15 },
-  { code: 'TWD', name: 'Đô Đài Loan', symbol: 'NT$', flag: '🇹🇼', defaultRate: 785 },
-  { code: 'SGD', name: 'Đô Singapore', symbol: 'S$', flag: '🇸🇬', defaultRate: 18850 },
-  { code: 'GBP', name: 'Bảng Anh', symbol: '£', flag: '🇬🇧', defaultRate: 32400 },
-  { code: 'AUD', name: 'Đô Úc', symbol: 'A$', flag: '🇦🇺', defaultRate: 16750 },
-  { code: 'CAD', name: 'Đô Canada', symbol: 'C$', flag: '🇨🇦', defaultRate: 18550 },
-  { code: 'HKD', name: 'Đô Hồng Kông', symbol: 'HK$', flag: '🇭🇰', defaultRate: 3260 },
-  { code: 'MYR', name: 'Ringgit Mã', symbol: 'RM', flag: '🇲🇾', defaultRate: 5380 },
-];
+import { Currency } from './types';
+import { CURRENCIES } from './constants';
+import { AutoScaleText } from './components/AutoScaleText';
+import { Keypad } from './components/Keypad';
+import { CurrencyPicker } from './components/CurrencyPicker';
 
 function AnimatedNumber({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(value);
@@ -45,7 +24,7 @@ function AnimatedNumber({ value }: { value: number }) {
 
 function AppLogo({ className = "w-12 h-12", iconSize = "w-full h-full" }: { className?: string, iconSize?: string }) {
   return (
-    <div className={`relative flex items-center justify-center overflow-hidden rounded-[24%] ${className}`}>
+    <div className={`relative flex items-center justify-center overflow-hidden rounded-full ${className}`}>
       <img 
         src="/app_icon.webp" 
         alt="App Logo" 
@@ -58,8 +37,8 @@ function AppLogo({ className = "w-12 h-12", iconSize = "w-full h-full" }: { clas
 
 export default function App() {
   const [inputValue, setInputValue] = useState<string>('0');
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(CURRENCIES[1]); // Default to CNY
-  const [targetCurrency, setTargetCurrency] = useState<Currency>(CURRENCIES[0]); // Default to VND
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(CURRENCIES[1]);
+  const [targetCurrency, setTargetCurrency] = useState<Currency>(CURRENCIES[0]);
   const [isReverse, setIsReverse] = useState(false);
   const [rates, setRates] = useState<Record<string, number>>({});
   const [manualRates, setManualRates] = useState<Record<string, boolean>>({});
@@ -112,9 +91,7 @@ export default function App() {
     },
   ];
 
-  // Initialize and load rates + last currency
   useEffect(() => {
-    // Theme detection
     const savedTheme = localStorage.getItem('theme_preference') as 'light' | 'dark' | null;
     if (savedTheme) {
       setTheme(savedTheme);
@@ -154,7 +131,6 @@ export default function App() {
       if (found) setTargetCurrency(found);
     }
     
-    // Auto update from online source if possible
     const updateRates = async () => {
       if (isRefreshing) setIsRefreshing(true);
 
@@ -168,7 +144,6 @@ export default function App() {
           const currentManualRates = JSON.parse(localStorage.getItem('manual_rates_v1') || '{}');
           
           CURRENCIES.forEach(c => {
-            // If manual mode is on for this specific currency, do not overwrite if not refreshing manually
             if (currentManualRates[c.code] && !isRefreshing) {
               newRates[c.code] = rates[c.code] || savedRates ? JSON.parse(savedRates!)[c.code] || c.defaultRate : c.defaultRate;
               return;
@@ -200,14 +175,12 @@ export default function App() {
     updateRates();
   }, [isRefreshing]);
 
-  // Save rates whenever they change manually
   useEffect(() => {
     if (Object.keys(rates).length > 0) {
       localStorage.setItem('currency_rates_v3', JSON.stringify(rates));
     }
   }, [rates]);
 
-  // Save currency selection
   useEffect(() => {
     localStorage.setItem('last_selected_currency', selectedCurrency.code);
   }, [selectedCurrency]);
@@ -216,7 +189,6 @@ export default function App() {
     localStorage.setItem('last_target_currency', targetCurrency.code);
   }, [targetCurrency]);
 
-  // PWA Install Logic
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
@@ -226,7 +198,6 @@ export default function App() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-  // Effect to trigger PWA popup after tutorial
   useEffect(() => {
     if (!showTutorial && deferredPrompt) {
       const dismissed = localStorage.getItem('pwa_install_dismissed');
@@ -307,7 +278,6 @@ export default function App() {
     setManualRates(newManualRates);
     localStorage.setItem('manual_rates_v1', JSON.stringify(newManualRates));
     
-    // Trigger immediate update when switching back to auto
     try {
       const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
       const data = await response.json();
@@ -351,7 +321,6 @@ export default function App() {
     const isReverseAndSourceWhole = isReverse && selectedCurrency.code === 'VND';
 
     if (isTargetWhole || isReverseAndSourceWhole) {
-       // Typically VND or similar whole currencies
        if (val > 100) return new Intl.NumberFormat('vi-VN').format(Math.round(val));
     }
     
@@ -362,10 +331,8 @@ export default function App() {
     }).format(val);
   };
 
-  // Helper to format numbers inside an expression (with thousand separators)
   const formatExpression = (val: string) => {
     if (!val) return '0';
-    // Format numeric parts with dots for thousands (Vietnamese convention)
     return val.replace(/(\d+)(\.\d+)?/g, (match, integerPart, decimalPart) => {
       const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
       return decimalPart ? formattedInteger + decimalPart : formattedInteger;
@@ -383,13 +350,10 @@ export default function App() {
     const currentY = e.touches[0].clientY;
     const diff = currentY - startY;
     
-    // Only pull if at the top and pulling down
     if (diff > 0 && window.scrollY === 0) {
-      // Resistance effect
       const dampedDiff = Math.pow(diff, 0.8);
       setPullY(dampedDiff);
       
-      // Prevent default to disable browser pull-to-refresh if we're handling it
       if (diff > 10) {
         if (e.cancelable) e.preventDefault();
       }
@@ -577,9 +541,9 @@ export default function App() {
                 <Coins className={`w-4 h-4 transition-colors ${isKeypadOpen ? 'text-emerald-500' : 'opacity-20'}`} />
               </div>
               <div className="flex items-center justify-between min-h-[44px]">
-                <div className={`text-3xl font-bold tracking-tighter font-mono break-all line-clamp-1 leading-none ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                <AutoScaleText className={`text-3xl font-bold tracking-tighter font-mono leading-none ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                   {inputValue === '0' ? '0' : formatExpression(inputValue)}
-                </div>
+                </AutoScaleText>
                 <span className={`text-xl font-medium ml-2 select-none shrink-0 ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'}`}>{isReverse ? targetCurrency.symbol : selectedCurrency.symbol}</span>
               </div>
               
@@ -653,9 +617,9 @@ export default function App() {
                 </AnimatePresence>
               </div>
               <div className="flex items-center justify-between min-h-[44px]">
-                <div className={`text-3xl font-bold tracking-tight font-mono break-all leading-none truncate ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                <AutoScaleText className={`text-3xl font-bold tracking-tight font-mono leading-none ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                   {isReverse ? formatResult(convertedAmount) : <AnimatedNumber value={convertedAmount} />}
-                </div>
+                </AutoScaleText>
                 <span className="text-xl font-bold text-emerald-500 ml-2 shrink-0">{isReverse ? selectedCurrency.symbol : targetCurrency.symbol}</span>
               </div>
             </div>
@@ -664,149 +628,24 @@ export default function App() {
       </motion.div>
 
       {/* Keypad Panel */}
-      <div className="fixed bottom-0 left-0 right-0 z-[50]">
-        <AnimatePresence>
-          {isKeypadOpen && (
-            <motion.div 
-              key="keypad-panel"
-              initial={{ opacity: 0, y: 300 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 300 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-              className={`w-full px-6 pb-8 pt-5 border-t rounded-t-[32px] shadow-xl transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-slate-50 border-slate-200'}`}
-            >
-              <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto overflow-hidden text-slate-800 dark:text-white">
-                {[
-                  ['7', '8', '9', '/'],
-                  ['4', '5', '6', '*'],
-                  ['1', '2', '3', '-'],
-                  ['.', '0', '000', '+'],
-                ].map((row, rIdx) => (
-                  <div key={rIdx} className="contents">
-                    {row.map(key => (
-                      <motion.button
-                        key={key}
-                        whileTap={{ 
-                          backgroundColor: 'rgba(16, 185, 129, 0.4)',
-                          borderColor: 'rgba(16, 185, 129, 0.5)',
-                        }}
-                        transition={{ 
-                          duration: 0.6,
-                          ease: "easeOut"
-                        }}
-                        onClick={() => {
-                          if ('vibrate' in navigator) navigator.vibrate(5);
-                          setInputValue(prev => {
-                            if (prev === '0' && key === '000') return '0';
-                            if (prev === '0' && !isNaN(Number(key))) return key;
-                            if (prev.length > 22) return prev;
-                            return prev + key;
-                          });
-                        }}
-                        className={`h-11 sm:h-12 flex items-center justify-center text-xl font-bold rounded-2xl active:scale-95 border transition-colors
-                          ${['/', '*', '-', '+'].includes(key) 
-                            ? (theme === 'dark' ? 'bg-slate-800 text-emerald-400 border-emerald-500/10' : 'bg-emerald-50 text-emerald-600 border-emerald-200') 
-                            : (theme === 'dark' ? 'bg-slate-800/50 text-white border-slate-800' : 'bg-slate-100 text-slate-900 border-slate-200')}`}
-                      >
-                        {key === '*' ? '×' : key === '/' ? '÷' : key}
-                      </motion.button>
-                    ))}
-                  </div>
-                ))}
-                <div className="grid grid-cols-4 gap-2 col-span-4">
-                  <motion.button
-                    whileTap={{ backgroundColor: 'rgba(239, 68, 68, 0.2)' }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                    onClick={() => {
-                      if ('vibrate' in navigator) navigator.vibrate(5);
-                      setInputValue(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
-                    }}
-                    className={`h-11 sm:h-12 border rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all
-                      ${theme === 'dark' ? 'bg-slate-800/40 text-slate-500 border-slate-800' : 'bg-slate-100 text-slate-400 border-slate-200'}`}
-                  >
-                    <Delete className="w-5 h-5" />
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ backgroundColor: 'rgba(239, 68, 68, 0.4)' }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                    onClick={() => {
-                      if ('vibrate' in navigator) navigator.vibrate(5);
-                      setInputValue('0');
-                    }}
-                    className={`h-11 sm:h-12 border rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all
-                      ${theme === 'dark' ? 'bg-red-500/5 text-red-400/80 border-red-500/10' : 'bg-red-50 text-red-500/80 border-red-100'}`}
-                  >
-                    C
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ backgroundColor: 'rgba(5, 150, 105, 1)', scale: 0.98 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                    onClick={() => setIsKeypadOpen(false)}
-                    className="col-span-2 h-11 sm:h-12 bg-emerald-600 text-white font-black rounded-2xl border border-emerald-400/20 active:scale-95 transition-transform text-sm uppercase tracking-[0.2em] flex items-center justify-center"
-                  >
-                    XONG
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <Keypad 
+        isOpen={isKeypadOpen} 
+        onClose={() => setIsKeypadOpen(false)} 
+        setInputValue={setInputValue} 
+        theme={theme} 
+      />
 
       {/* Currency Picker Modal */}
-      <AnimatePresence>
-        {isPickerOpen && (
-          <div className="fixed inset-0 z-[120] flex flex-col pt-12">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              onClick={() => setIsPickerOpen(false)}
-              className="absolute inset-0 bg-black/90 backdrop-blur-md" 
-            />
-            <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className={`relative flex-1 rounded-t-[40px] border-t flex flex-col overflow-hidden max-h-[85vh] mt-auto transition-colors duration-500 ${theme === 'dark' ? 'bg-[#1e293b] border-slate-800' : 'bg-slate-50 border-slate-200'}`}
-            >
-              <div className="px-8 pt-8 pb-4 flex items-center justify-between">
-                <h3 className={`text-xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{pickerType === 'source' ? 'CHỌN TIỀN GỐC' : 'CHỌN TIỀN ĐẾN'}</h3>
-                <button onClick={() => setIsPickerOpen(false)} className={`p-2 rounded-full ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                  <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} />
-                </button>
-              </div>
-              <div className="px-6 pb-12 overflow-y-auto no-scrollbar grid grid-cols-2 gap-3">
-                {CURRENCIES.map(curr => {
-                  const isSelected = pickerType === 'source' ? selectedCurrency.code === curr.code : targetCurrency.code === curr.code;
-                  return (
-                    <button
-                      key={curr.code}
-                      onClick={() => {
-                        if (pickerType === 'source') setSelectedCurrency(curr);
-                        else setTargetCurrency(curr);
-                        setIsPickerOpen(false);
-                        if ('vibrate' in navigator) navigator.vibrate(5);
-                      }}
-                      className={`p-4 rounded-3xl border flex flex-col items-center gap-2 transition-all active:scale-95
-                        ${isSelected
-                          ? 'bg-emerald-500/10 border-emerald-500' 
-                          : (theme === 'dark' ? 'bg-slate-800/50 border-slate-700/50' : 'bg-slate-50 border-slate-200 shadow-sm')}`}
-                    >
-                      <span className="text-3xl">{curr.flag}</span>
-                      <div className="text-center">
-                        <div className={`text-sm font-bold leading-none mb-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{curr.code}</div>
-                        <div className="text-[10px] text-slate-500 font-bold uppercase">{curr.name}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <CurrencyPicker
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        pickerType={pickerType}
+        theme={theme}
+        selectedCurrency={selectedCurrency}
+        targetCurrency={targetCurrency}
+        onSelectSource={setSelectedCurrency}
+        onSelectTarget={setTargetCurrency}
+      />
 
       {/* Rate Editing Popup */}
       <AnimatePresence>
