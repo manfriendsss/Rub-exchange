@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, animate } from 'motion/react';
-import { X, ArrowDown, Coins, TrendingUp, Check, Copy, Delete, Settings2, ChevronRight, ChevronLeft, DollarSign, Calculator, Smartphone, RefreshCw } from 'lucide-react';
+import { X, ArrowDown, Coins, TrendingUp, Check, Copy, Delete, Settings2, ChevronRight, ChevronLeft, DollarSign, Calculator, Smartphone, RefreshCw, Sun, Moon } from 'lucide-react';
 
 interface Currency {
   code: string;
@@ -43,13 +43,22 @@ function AnimatedNumber({ value }: { value: number }) {
   return <span>{new Intl.NumberFormat('vi-VN').format(displayValue)}</span>;
 }
 
+function AppLogo({ className = "w-12 h-12", iconSize = "w-full h-full" }: { className?: string, iconSize?: string }) {
+  return (
+    <div className={`relative flex items-center justify-center ${className}`}>
+      <RefreshCw className={`absolute inset-0 ${iconSize} text-emerald-500/20 animate-[spin_8s_linear_infinite]`} />
+      <span className="text-emerald-500 font-black text-2xl mb-1 relative z-10 select-none">₫</span>
+    </div>
+  );
+}
+
 export default function App() {
   const [inputValue, setInputValue] = useState<string>('0');
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(CURRENCIES[1]); // Default to CNY
   const [targetCurrency, setTargetCurrency] = useState<Currency>(CURRENCIES[0]); // Default to VND
   const [isReverse, setIsReverse] = useState(false);
   const [rates, setRates] = useState<Record<string, number>>({});
-  const [isAutoRate, setIsAutoRate] = useState<boolean>(true);
+  const [manualRates, setManualRates] = useState<Record<string, boolean>>({});
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
   const [isEditingRate, setIsEditingRate] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -64,12 +73,13 @@ export default function App() {
   const [pullY, setPullY] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [startY, setStartY] = useState(0);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
   const tutorialPages = [
     {
       title: "Chào mừng bạn!",
       desc: "Ứng dụng giúp bạn quy đổi tiền tệ nhanh chóng với tỷ giá cập nhật trực tuyến.",
-      icon: <Coins className="w-12 h-12 text-emerald-500" />,
+      icon: <AppLogo className="w-16 h-16" iconSize="w-16 h-16" />,
     },
     {
       title: "Chọn loại tiền tệ",
@@ -94,20 +104,30 @@ export default function App() {
     {
       title: "Cài đặt ứng dụng",
       desc: "Sử dụng nút cài đặt hoặc trình duyệt để thêm ứng dụng vào màn hình chính để dùng mượt mà nhất.",
-      icon: <Smartphone className="w-12 h-12 text-emerald-500" />,
+      icon: <AppLogo className="w-16 h-16" iconSize="w-16 h-16" />,
     },
   ];
 
   // Initialize and load rates + last currency
   useEffect(() => {
+    // Theme detection
+    const savedTheme = localStorage.getItem('theme_preference') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(prefersDark ? 'dark' : 'light');
+    }
+
     const tutorialSeen = localStorage.getItem('tutorial_seen_v2');
     if (!tutorialSeen) {
       setShowTutorial(true);
     }
 
-    const savedAutoPreference = localStorage.getItem('is_auto_rate');
-    const autoMode = savedAutoPreference === null ? true : savedAutoPreference === 'true';
-    setIsAutoRate(autoMode);
+    const savedManualRates = localStorage.getItem('manual_rates_v1');
+    if (savedManualRates) {
+      setManualRates(JSON.parse(savedManualRates));
+    }
     
     const savedRates = localStorage.getItem('currency_rates_v3');
     if (savedRates) {
@@ -132,10 +152,6 @@ export default function App() {
     
     // Auto update from online source if possible
     const updateRates = async () => {
-      // If manual mode is on, don't auto-update from network (user wants to keep their saved manual rate)
-      const savedAutoPreference = localStorage.getItem('is_auto_rate');
-      if (savedAutoPreference === 'false' && !isRefreshing) return;
-
       if (isRefreshing) setIsRefreshing(true);
 
       try {
@@ -145,7 +161,15 @@ export default function App() {
         
         if (usdToVnd) {
           const newRates: Record<string, number> = {};
+          const currentManualRates = JSON.parse(localStorage.getItem('manual_rates_v1') || '{}');
+          
           CURRENCIES.forEach(c => {
+            // If manual mode is on for this specific currency, do not overwrite if not refreshing manually
+            if (currentManualRates[c.code] && !isRefreshing) {
+              newRates[c.code] = rates[c.code] || savedRates ? JSON.parse(savedRates!)[c.code] || c.defaultRate : c.defaultRate;
+              return;
+            }
+
             if (c.code === 'VND') {
               newRates[c.code] = 1;
             } else if (c.code === 'USD') {
@@ -164,7 +188,6 @@ export default function App() {
         }
       } catch (error) {
         console.error('Failed to fetch online rates', error);
-        // On error (offline), keep existing rates already loaded from localStorage
       } finally {
         setTimeout(() => setIsRefreshing(false), 500);
       }
@@ -221,6 +244,13 @@ export default function App() {
     }
   };
 
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme_preference', newTheme);
+    if ('vibrate' in navigator) navigator.vibrate(10);
+  };
+
   const currentRate = rates[selectedCurrency.code] || selectedCurrency.defaultRate;
   const targetRate = rates[targetCurrency.code] || targetCurrency.defaultRate;
 
@@ -255,19 +285,23 @@ export default function App() {
     }
   };
 
+  const isAutoRate = !manualRates[selectedCurrency.code];
+
   const handleRateUpdate = () => {
     const newRate = parseFloat(tempRate);
     if (!isNaN(newRate) && newRate > 0) {
       setRates(prev => ({ ...prev, [selectedCurrency.code]: newRate }));
-      setIsAutoRate(false);
-      localStorage.setItem('is_auto_rate', 'false');
+      const newManualRates = { ...manualRates, [selectedCurrency.code]: true };
+      setManualRates(newManualRates);
+      localStorage.setItem('manual_rates_v1', JSON.stringify(newManualRates));
       setIsEditingRate(false);
     }
   };
 
   const setAutoMode = async () => {
-    setIsAutoRate(true);
-    localStorage.setItem('is_auto_rate', 'true');
+    const newManualRates = { ...manualRates, [selectedCurrency.code]: false };
+    setManualRates(newManualRates);
+    localStorage.setItem('manual_rates_v1', JSON.stringify(newManualRates));
     
     // Trigger immediate update when switching back to auto
     try {
@@ -280,7 +314,6 @@ export default function App() {
         if (usdToTarget) {
           newRates[selectedCurrency.code] = Math.round(usdToVnd / usdToTarget);
           setRates(newRates);
-          localStorage.setItem('currency_rates_v3', JSON.stringify(newRates));
         }
       }
       setIsEditingRate(false);
@@ -372,12 +405,12 @@ export default function App() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="flex flex-col h-svh w-full bg-[#0f172a] text-slate-200 font-sans overflow-hidden select-none fixed inset-0"
+      className={`flex flex-col h-svh w-full font-sans overflow-hidden select-none fixed inset-0 transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0f172a] text-slate-200' : 'bg-slate-100 text-slate-800'}`}
     >
       {/* Pull to refresh indicator */}
       <motion.div 
         style={{ height: pullY, opacity: pullY / 60 }}
-        className="flex items-center justify-center overflow-hidden w-full bg-slate-900/50"
+        className={`flex items-center justify-center overflow-hidden w-full ${theme === 'dark' ? 'bg-slate-900/50' : 'bg-slate-200/50'}`}
       >
         <div className={`transition-transform duration-200 ${pullY > 60 ? 'rotate-180 scale-110' : 'rotate-0 scale-100'}`}>
           <ArrowDown className={`w-6 h-6 ${pullY > 60 ? 'text-emerald-400' : 'text-slate-600'}`} />
@@ -405,51 +438,71 @@ export default function App() {
         className="flex flex-col flex-1 relative z-0"
       >
         {/* Header */}
-        <header className={`px-6 shrink-0 transition-all duration-500 overflow-hidden flex flex-col justify-end ${isKeypadOpen ? 'h-24 pb-5' : 'h-auto pt-10 pb-2'}`}>
+        <header className={`px-6 shrink-0 transition-all duration-500 flex flex-col justify-end overflow-visible ${isKeypadOpen ? 'h-20 pb-4' : 'h-auto pt-10 pb-2'}`}>
           {isKeypadOpen ? (
             <motion.div 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex items-center justify-between w-full"
             >
-              <div className="flex items-center gap-1.5 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700 shadow-sm backdrop-blur-md">
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-sm backdrop-blur-md ${theme === 'dark' ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50/80 border-slate-200 shadow-sm'}`}>
                 <span className="text-sm leading-none">{isReverse ? targetCurrency.flag : selectedCurrency.flag}</span>
-                <span className="text-[10px] font-black text-white">{isReverse ? targetCurrency.code : selectedCurrency.code}</span>
-                <ChevronRight className="w-3 h-3 text-slate-600 mx-0.5" />
+                <span className={`text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{isReverse ? targetCurrency.code : selectedCurrency.code}</span>
+                <ChevronRight className="w-3 h-3 text-slate-400 mx-0.5" />
                 <span className="text-sm leading-none">{isReverse ? selectedCurrency.flag : targetCurrency.flag}</span>
-                <span className="text-[10px] font-black text-white">{isReverse ? selectedCurrency.code : targetCurrency.code}</span>
+                <span className={`text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{isReverse ? selectedCurrency.code : targetCurrency.code}</span>
               </div>
               
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/5 border border-emerald-500/10 backdrop-blur-md">
-                <TrendingUp className="w-3 h-3 text-emerald-500/50" />
-                <span className="text-[10px] font-mono font-bold text-emerald-400">
-                  {new Intl.NumberFormat('vi-VN').format(currentRate)} đ
-                </span>
-              </div>
+                <div 
+                  onClick={() => {
+                    setTempRate(currentRate.toString());
+                    setIsEditingRate(true);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full border backdrop-blur-md cursor-pointer active:scale-95 transition-all
+                    ${isAutoRate 
+                      ? 'bg-emerald-500/5 border-emerald-500/10' 
+                      : (theme === 'dark' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-100 border-amber-500/40')
+                    }`}
+                >
+                  <TrendingUp className={`w-3 h-3 ${isAutoRate ? 'text-emerald-500/50' : (theme === 'dark' ? 'text-amber-500/50' : 'text-amber-600')}`} />
+                  <span className={`text-[10px] font-mono font-bold ${isAutoRate ? 'text-emerald-400' : (theme === 'dark' ? 'text-amber-400' : 'text-amber-700')}`}>
+                    {new Intl.NumberFormat('vi-VN').format(currentRate)} đ
+                  </span>
+                </div>
             </motion.div>
           ) : (
             <div className="flex items-center justify-between w-full">
               <div className="flex flex-col">
-                <h1 className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">ĐỔI TIỀN</h1>
+                <h1 className={`${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'} text-[10px] font-bold uppercase tracking-[0.2em] mb-1`}>ĐỔI TIỀN</h1>
                   <div 
                     onClick={() => {
                       setTempRate(currentRate.toString());
                       setIsEditingRate(true);
                     }}
-                    className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg text-[10px] font-mono border w-fit active:scale-95 transition-all cursor-pointer ${isAutoRate ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}
+                    className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg text-[10px] font-mono border w-fit active:scale-95 transition-all cursor-pointer 
+                      ${isAutoRate 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : (theme === 'dark' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-100 text-amber-700 border-amber-500/40')
+                      }`}
                   >
                     <TrendingUp className="w-3 h-3" />
-                    <span>Tỷ giá: {new Intl.NumberFormat('vi-VN').format(currentRate)} đ {!isAutoRate && '(Tùy chỉnh)'}</span>
+                    <span>Tỷ giá: {new Intl.NumberFormat('vi-VN').format(currentRate)} đ</span>
                     <Settings2 className="w-3 h-3 opacity-50 ml-1" />
                   </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <button 
+                  onClick={toggleTheme}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border shadow-lg active:scale-90 transition-all duration-300 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-amber-400' : 'bg-slate-50 border-slate-200 text-indigo-600'}`}
+                >
+                    {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
                 <button 
                   onClick={() => {
                     setPickerType('target');
                     setIsPickerOpen(true);
                   }}
-                  className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 shadow-lg active:scale-90 transition-transform overflow-hidden"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border shadow-lg active:scale-90 transition-transform overflow-hidden ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
                 >
                     <span className="text-xl">{targetCurrency.flag}</span>
                 </button>
@@ -459,14 +512,14 @@ export default function App() {
         </header>
 
         {/* Main Content Area */}
-        <div className={`flex-1 flex flex-col px-4 pt-1 overflow-hidden transition-all duration-500 ${isKeypadOpen ? 'justify-start pb-[327px]' : 'justify-start pb-6'}`}>
-          <div className={`${isKeypadOpen ? 'space-y-0 translate-y-2' : 'space-y-6'} shrink-0 px-1 transition-all duration-500`}>
+        <div className={`flex-1 flex flex-col px-6 transition-all duration-500 ${isKeypadOpen ? 'justify-center pt-2 pb-[310px]' : 'justify-start pt-4 pb-6 mx-auto w-full max-w-lg'}`}>
+          <div className={`flex flex-col ${isKeypadOpen ? 'gap-3' : 'gap-6'} shrink-0 px-1 transition-all duration-500 relative`}>
             {/* Currency Selector Slider - Animated Dial */}
             <div className={`flex items-center justify-between gap-1 overflow-hidden relative transition-all duration-500 ${isKeypadOpen ? 'opacity-0 h-0 mb-0 pointer-events-none' : 'opacity-100 h-24 mt-4 py-4 mb-4'}`}>
               <button 
                 onClick={() => cycleCurrency('prev')} 
                 disabled={isKeypadOpen}
-                className="p-2 bg-slate-800/30 rounded-full active:scale-90 border border-slate-700/30 text-slate-500 z-10"
+                className={`p-2 rounded-full active:scale-90 border z-10 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700/30 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -489,16 +542,16 @@ export default function App() {
                     className="flex flex-col items-center"
                   >
                     <div className="text-[28px] leading-none mb-1">{selectedCurrency.flag}</div>
-                    <div className="text-xs font-black text-slate-500 uppercase tracking-widest">{selectedCurrency.name}</div>
-                    <div className="text-emerald-400 font-mono font-black text-xl leading-none">{selectedCurrency.code}</div>
+                    <div className={`text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>{selectedCurrency.name}</div>
+                    <div className="text-emerald-500 font-mono font-black text-xl leading-none">{selectedCurrency.code}</div>
                   </motion.div>
                 </AnimatePresence>
               </div>
 
-              <button 
+               <button 
                 onClick={() => cycleCurrency('next')} 
                 disabled={isKeypadOpen}
-                className="p-2 bg-slate-800/30 rounded-full active:scale-90 border border-slate-700/30 text-slate-500 z-10"
+                className={`p-2 rounded-full active:scale-90 border z-10 ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700/30 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -508,19 +561,22 @@ export default function App() {
             <div 
               onClick={() => setIsKeypadOpen(true)}
               className={`rounded-[24px] border transition-all duration-300 relative z-[5] group active:scale-[0.98] cursor-pointer
-                ${isKeypadOpen ? 'bg-slate-800 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] p-3 px-5' : 'bg-slate-800/40 border-slate-800 shadow-inner p-4 px-5'}`}
+                ${isKeypadOpen 
+                  ? (theme === 'dark' ? 'bg-slate-800 border-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.1)]' : 'bg-slate-50 border-emerald-500 shadow-md') 
+                  : (theme === 'dark' ? 'bg-slate-800/40 border-slate-800 shadow-inner' : 'bg-slate-200/50 border-slate-300 shadow-inner')
+                } p-4 px-5`}
             >
-              <div className="flex items-center justify-between mb-1 text-slate-500">
+              <div className={`flex items-center justify-between mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
                 <label className="text-[10px] uppercase font-bold tracking-widest leading-none">
                   {isKeypadOpen ? 'ĐANG NHẬP SỐ TIỀN' : 'CHẠM ĐỂ NHẬP'} ({isReverse ? targetCurrency.code : selectedCurrency.code})
                 </label>
                 <Coins className={`w-4 h-4 transition-colors ${isKeypadOpen ? 'text-emerald-500' : 'opacity-20'}`} />
               </div>
               <div className="flex items-center justify-between min-h-[44px]">
-                <div className="text-3xl font-bold tracking-tighter text-white font-mono break-all line-clamp-1 leading-none">
+                <div className={`text-3xl font-bold tracking-tighter font-mono break-all line-clamp-1 leading-none ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                   {inputValue === '0' ? '0' : formatExpression(inputValue)}
                 </div>
-                <span className="text-xl font-medium text-slate-600 ml-2 select-none shrink-0">{isReverse ? targetCurrency.symbol : selectedCurrency.symbol}</span>
+                <span className={`text-xl font-medium ml-2 select-none shrink-0 ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'}`}>{isReverse ? targetCurrency.symbol : selectedCurrency.symbol}</span>
               </div>
               
               <AnimatePresence>
@@ -537,10 +593,10 @@ export default function App() {
               </AnimatePresence>
             </div>
 
-            <div className="flex justify-center -my-3.5 relative z-10 transition-all duration-500">
+            <div className="flex justify-center h-0 relative z-20">
               <button 
                 onClick={toggleReverse}
-                className={`p-2 rounded-full border shadow-xl transition-all duration-300 active:scale-90 bg-slate-900 group ${isReverse ? 'border-emerald-500' : 'border-slate-800'}`}
+                className={`absolute -translate-y-1/2 p-2 rounded-full border shadow-2xl transition-all duration-300 active:scale-90 group ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'} ${isReverse ? 'border-emerald-500' : ''}`}
               >
                 <motion.div
                   animate={{ rotate: rotation }}
@@ -548,9 +604,9 @@ export default function App() {
                     duration: 0.6, 
                     ease: [0.16, 1, 0.3, 1] 
                   }}
-                  className="flex items-center justify-center text-slate-400 group-hover:text-emerald-500"
+                  className={`flex items-center justify-center ${isReverse ? 'text-emerald-500' : (theme === 'dark' ? 'text-slate-400' : 'text-slate-500')}`}
                 >
-                  <RefreshCw className={`w-4 h-4 ${isReverse ? 'text-emerald-500' : ''}`} />
+                  <RefreshCw className="w-4 h-4" />
                 </motion.div>
               </button>
             </div>
@@ -558,7 +614,11 @@ export default function App() {
             {/* Result Card */}
             <div 
               onClick={copyToClipboard}
-              className={`bg-slate-900 rounded-[24px] border border-emerald-500/30 shadow-[0_20px_50px_-20px_rgba(16,185,129,0.3)] relative z-[5] overflow-hidden active:scale-[0.98] transition-all cursor-pointer group
+              className={`rounded-[24px] border relative z-[5] active:scale-[0.98] transition-all cursor-pointer group
+                ${theme === 'dark' 
+                  ? 'bg-slate-900 border-emerald-500/30 shadow-[0_15px_40px_-15px_rgba(16,185,129,0.25)]' 
+                  : 'bg-slate-50 border-emerald-500 shadow-lg'
+                }
                 ${isKeypadOpen ? 'p-3 px-5' : 'p-4 px-5'}`}
             >
               <div className="flex justify-between items-center mb-1">
@@ -572,7 +632,7 @@ export default function App() {
                       initial={{ opacity: 0, scale: 0.5, rotate: -20 }} 
                       animate={{ opacity: 1, scale: 1, rotate: 0 }} 
                       exit={{ opacity: 0, scale: 0.5 }} 
-                      className="text-emerald-400 flex items-center justify-center"
+                      className="text-emerald-500 flex items-center justify-center"
                     >
                       <Check className="w-3.5 h-3.5" />
                     </motion.div>
@@ -583,13 +643,13 @@ export default function App() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                     >
-                      <Copy className="w-3.5 h-3.5 text-emerald-500/20 group-hover:text-emerald-500 transition-colors" />
+                      <Copy className={`w-3.5 h-3.5 transition-colors ${theme === 'dark' ? 'text-emerald-500/20 group-hover:text-emerald-500' : 'text-emerald-500/40 group-hover:text-emerald-600'}`} />
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
               <div className="flex items-center justify-between min-h-[44px]">
-                <div className="text-3xl font-bold tracking-tight text-white font-mono break-all leading-none truncate">
+                <div className={`text-3xl font-bold tracking-tight font-mono break-all leading-none truncate ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                   {isReverse ? formatResult(convertedAmount) : <AnimatedNumber value={convertedAmount} />}
                 </div>
                 <span className="text-xl font-bold text-emerald-500 ml-2 shrink-0">{isReverse ? selectedCurrency.symbol : targetCurrency.symbol}</span>
@@ -609,10 +669,9 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 300 }}
               transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-              className="w-full bg-[#0f172a] px-4 pb-8 pt-2 border-t border-slate-800 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+              className={`w-full px-6 pb-8 pt-5 border-t rounded-t-[32px] shadow-xl transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-slate-50 border-slate-200'}`}
             >
-              <div className="w-12 h-1 bg-slate-800/50 rounded-full mx-auto mb-4" onClick={() => setIsKeypadOpen(false)}></div>
-              <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto overflow-hidden">
+              <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto overflow-hidden text-slate-800 dark:text-white">
                 {[
                   ['7', '8', '9', '/'],
                   ['4', '5', '6', '*'],
@@ -621,8 +680,16 @@ export default function App() {
                 ].map((row, rIdx) => (
                   <div key={rIdx} className="contents">
                     {row.map(key => (
-                      <button
+                      <motion.button
                         key={key}
+                        whileTap={{ 
+                          backgroundColor: 'rgba(16, 185, 129, 0.4)',
+                          borderColor: 'rgba(16, 185, 129, 0.5)',
+                        }}
+                        transition={{ 
+                          duration: 0.6,
+                          ease: "easeOut"
+                        }}
                         onClick={() => {
                           if ('vibrate' in navigator) navigator.vibrate(5);
                           setInputValue(prev => {
@@ -632,41 +699,49 @@ export default function App() {
                             return prev + key;
                           });
                         }}
-                        className={`h-11 sm:h-12 flex items-center justify-center text-xl font-bold rounded-2xl transition-all active:scale-95 border 
+                        className={`h-11 sm:h-12 flex items-center justify-center text-xl font-bold rounded-2xl active:scale-95 border transition-colors
                           ${['/', '*', '-', '+'].includes(key) 
-                            ? 'bg-slate-800 text-emerald-400 border-emerald-500/10' 
-                            : 'bg-slate-800/50 text-white border-slate-800'}`}
+                            ? (theme === 'dark' ? 'bg-slate-800 text-emerald-400 border-emerald-500/10' : 'bg-emerald-50 text-emerald-600 border-emerald-200') 
+                            : (theme === 'dark' ? 'bg-slate-800/50 text-white border-slate-800' : 'bg-slate-100 text-slate-900 border-slate-200')}`}
                       >
                         {key === '*' ? '×' : key === '/' ? '÷' : key}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 ))}
                 <div className="grid grid-cols-4 gap-2 col-span-4">
-                  <button
+                  <motion.button
+                    whileTap={{ backgroundColor: 'rgba(239, 68, 68, 0.2)' }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
                     onClick={() => {
                       if ('vibrate' in navigator) navigator.vibrate(5);
                       setInputValue(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
                     }}
-                    className="h-11 sm:h-12 bg-slate-800/40 text-slate-500 border border-slate-800 rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all"
+                    className={`h-11 sm:h-12 border rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all
+                      ${theme === 'dark' ? 'bg-slate-800/40 text-slate-500 border-slate-800' : 'bg-slate-100 text-slate-400 border-slate-200'}`}
                   >
                     <Delete className="w-5 h-5" />
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ backgroundColor: 'rgba(239, 68, 68, 0.4)' }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
                     onClick={() => {
                       if ('vibrate' in navigator) navigator.vibrate(5);
                       setInputValue('0');
                     }}
-                    className="h-11 sm:h-12 bg-red-500/5 text-red-400/80 border border-red-500/10 rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all"
+                    className={`h-11 sm:h-12 border rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all
+                      ${theme === 'dark' ? 'bg-red-500/5 text-red-400/80 border-red-500/10' : 'bg-red-50 text-red-500/80 border-red-100'}`}
                   >
                     C
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ backgroundColor: 'rgba(5, 150, 105, 1)', scale: 0.98 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
                     onClick={() => setIsKeypadOpen(false)}
-                    className="col-span-2 h-11 sm:h-12 bg-emerald-600 text-white font-black rounded-2xl border border-emerald-400/20 active:scale-95 transition-all text-sm uppercase tracking-[0.2em] flex items-center justify-center"
+                    className="col-span-2 h-11 sm:h-12 bg-emerald-600 text-white font-black rounded-2xl border border-emerald-400/20 active:scale-95 transition-transform text-sm uppercase tracking-[0.2em] flex items-center justify-center"
                   >
                     XONG
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
@@ -690,12 +765,12 @@ export default function App() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative flex-1 bg-[#1e293b] rounded-t-[40px] border-t border-slate-800 flex flex-col overflow-hidden max-h-[85vh] mt-auto"
+              className={`relative flex-1 rounded-t-[40px] border-t flex flex-col overflow-hidden max-h-[85vh] mt-auto transition-colors duration-500 ${theme === 'dark' ? 'bg-[#1e293b] border-slate-800' : 'bg-slate-50 border-slate-200'}`}
             >
               <div className="px-8 pt-8 pb-4 flex items-center justify-between">
-                <h3 className="text-xl font-black text-white">{pickerType === 'source' ? 'CHỌN TIỀN GỐC' : 'CHỌN TIỀN ĐẾN'}</h3>
-                <button onClick={() => setIsPickerOpen(false)} className="p-2 bg-slate-800 rounded-full">
-                  <X className="w-5 h-5 text-slate-400" />
+                <h3 className={`text-xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{pickerType === 'source' ? 'CHỌN TIỀN GỐC' : 'CHỌN TIỀN ĐẾN'}</h3>
+                <button onClick={() => setIsPickerOpen(false)} className={`p-2 rounded-full ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                  <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} />
                 </button>
               </div>
               <div className="px-6 pb-12 overflow-y-auto no-scrollbar grid grid-cols-2 gap-3">
@@ -713,11 +788,11 @@ export default function App() {
                       className={`p-4 rounded-3xl border flex flex-col items-center gap-2 transition-all active:scale-95
                         ${isSelected
                           ? 'bg-emerald-500/10 border-emerald-500' 
-                          : 'bg-slate-800/50 border-slate-700/50'}`}
+                          : (theme === 'dark' ? 'bg-slate-800/50 border-slate-700/50' : 'bg-slate-50 border-slate-200 shadow-sm')}`}
                     >
                       <span className="text-3xl">{curr.flag}</span>
                       <div className="text-center">
-                        <div className="text-sm font-bold text-white leading-none mb-1">{curr.code}</div>
+                        <div className={`text-sm font-bold leading-none mb-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{curr.code}</div>
                         <div className="text-[10px] text-slate-500 font-bold uppercase">{curr.name}</div>
                       </div>
                     </button>
@@ -744,19 +819,19 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-slate-900 border border-slate-800 p-6 rounded-[32px] shadow-2xl"
+              className={`relative w-full max-w-sm border p-6 rounded-[32px] shadow-2xl transition-colors duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
             >
-              <h3 className="text-lg font-bold text-white mb-2">Chỉnh sửa tỷ giá</h3>
+              <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Chỉnh sửa tỷ giá</h3>
               <p className="text-xs text-slate-500 mb-6 uppercase tracking-wider">Tỷ giá cho 1 {selectedCurrency.code} sang VNĐ</p>
               
-              <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 mb-6">
+              <div className={`p-4 rounded-2xl border mb-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                 <input 
                   type="number"
                   inputMode="decimal"
                   value={tempRate}
                   onChange={(e) => setTempRate(e.target.value)}
                   autoFocus
-                  className="w-full bg-transparent text-3xl font-mono font-bold text-emerald-400 outline-none"
+                  className={`w-full bg-transparent text-3xl font-mono font-bold outline-none ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}
                   placeholder="0"
                 />
                 <div className="text-[10px] text-slate-500 mt-1 font-bold">VNĐ / {selectedCurrency.code}</div>
@@ -766,7 +841,11 @@ export default function App() {
                 {!isAutoRate && (
                   <button 
                     onClick={setAutoMode}
-                    className="w-full py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] mb-1 active:scale-95 transition-all"
+                    className={`w-full py-3 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] mb-1 active:scale-95 transition-all border
+                      ${theme === 'dark' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}
                   >
                     DÙNG TỶ GIÁ TỰ ĐỘNG
                   </button>
@@ -775,7 +854,7 @@ export default function App() {
                 <div className="flex gap-3">
                   <button 
                     onClick={() => setIsEditingRate(false)}
-                    className="flex-1 py-4 bg-slate-800 text-slate-400 font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all"
+                    className={`flex-1 py-4 font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all ${theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-600'}`}
                   >
                     HỦY
                   </button>
@@ -799,15 +878,13 @@ export default function App() {
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
-            className="fixed bottom-6 left-6 right-6 z-[100] bg-slate-900 border border-emerald-500/10 p-5 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-4"
+            className={`fixed bottom-6 left-6 right-6 z-[100] border p-5 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col gap-4 transition-colors duration-500 ${theme === 'dark' ? 'bg-slate-900 border-emerald-500/10' : 'bg-slate-50 border-emerald-200'}`}
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                  <Coins className="w-6 h-6 text-white" />
-                </div>
+                <AppLogo className="w-12 h-12" iconSize="w-12 h-12" />
                 <div>
-                  <h3 className="font-bold text-white text-sm">Cài đặt ứng dụng</h3>
+                  <h3 className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Cài đặt ứng dụng</h3>
                   <p className="text-[10px] text-slate-400">Giao diện mượt mà nhất khi cài đặt. Lưu ý: Hãy mở link ở trình duyệt chính (Chrome/Safari) để có thể cài đặt.</p>
                 </div>
               </div>
@@ -836,13 +913,13 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-slate-900 border border-slate-800 p-8 rounded-[40px] shadow-2xl flex flex-col items-center text-center"
+              className={`relative w-full max-w-sm border p-8 rounded-[40px] shadow-2xl flex flex-col items-center text-center transition-colors duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
             >
-              <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-6 border border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.1)]">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 border shadow-[0_0_40px_rgba(16,185,129,0.1)] ${theme === 'dark' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50 border-emerald-100'}`}>
                 {tutorialPages[tutorialStep].icon}
               </div>
               
-              <h3 className="text-xl font-black text-white mb-4 uppercase tracking-tight">
+              <h3 className={`text-xl font-black mb-4 uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                 {tutorialPages[tutorialStep].title}
               </h3>
               
@@ -854,7 +931,7 @@ export default function App() {
                 {tutorialPages.map((_, idx) => (
                   <div 
                     key={idx} 
-                    className={`h-1 rounded-full transition-all duration-300 ${idx === tutorialStep ? 'w-8 bg-emerald-500' : 'w-2 bg-slate-800'}`} 
+                    className={`h-1 rounded-full transition-all duration-300 ${idx === tutorialStep ? 'w-8 bg-emerald-500' : (theme === 'dark' ? 'w-2 bg-slate-800' : 'w-2 bg-slate-200')}`} 
                   />
                 ))}
               </div>
@@ -863,7 +940,7 @@ export default function App() {
                 {tutorialStep > 0 && (
                   <button 
                     onClick={() => setTutorialStep(prev => prev - 1)}
-                    className="flex-1 py-4 bg-slate-800 text-slate-400 font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all"
+                    className={`flex-1 py-4 font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all ${theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}
                   >
                     QUAY LẠI
                   </button>

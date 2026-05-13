@@ -13,8 +13,6 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: #0f172a;
-  color: #e2e8f0;
   overflow: hidden; /* Prevent body scroll */
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation; /* Helps with zooming issues */
