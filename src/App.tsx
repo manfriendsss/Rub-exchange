@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, animate } from 'motion/react';
-import { X, ArrowDown, Coins, TrendingUp, Check, Copy, Delete, Settings2, ChevronRight, ChevronLeft, DollarSign, Calculator, Smartphone } from 'lucide-react';
+import { X, ArrowDown, Coins, TrendingUp, Check, Copy, Delete, Settings2, ChevronRight, ChevronLeft, DollarSign, Calculator, Smartphone, RefreshCw } from 'lucide-react';
 
 interface Currency {
   code: string;
@@ -60,6 +60,7 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallPopup, setShowInstallPopup] = useState(false);
+  const [rotation, setRotation] = useState(0);
   const [pullY, setPullY] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [startY, setStartY] = useState(0);
@@ -290,6 +291,7 @@ export default function App() {
   };
 
   const toggleReverse = () => {
+    setRotation(prev => prev + 360);
     setIsReverse(!isReverse);
     setInputValue('0');
     if ('vibrate' in navigator) navigator.vibrate(10);
@@ -514,9 +516,18 @@ export default function App() {
             <div className="flex justify-center -my-4 relative z-10">
               <button 
                 onClick={toggleReverse}
-                className={`p-2.5 rounded-full border shadow-xl transition-all duration-300 active:scale-90 bg-slate-900 group ${isReverse ? 'border-emerald-500 rotate-180' : 'border-slate-800'}`}
+                className={`p-2.5 rounded-full border shadow-xl transition-all duration-300 active:scale-90 bg-slate-900 group ${isReverse ? 'border-emerald-500' : 'border-slate-800'}`}
               >
-                <ArrowDown className={`w-5 h-5 transition-colors ${isReverse ? 'text-emerald-500' : 'text-slate-600 group-hover:text-emerald-500'}`} />
+                <motion.div
+                  animate={{ rotate: rotation }}
+                  transition={{ 
+                    duration: 0.6, 
+                    ease: [0.16, 1, 0.3, 1] // Custom expoOut easing for fast start, slow end
+                  }}
+                  className="flex items-center justify-center text-slate-600 group-hover:text-emerald-500"
+                >
+                  <RefreshCw className={`w-5 h-5 ${isReverse ? 'text-emerald-500' : ''}`} />
+                </motion.div>
               </button>
             </div>
 
@@ -532,11 +543,24 @@ export default function App() {
                 </label>
                 <AnimatePresence mode="wait">
                   {copied ? (
-                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
-                      <Check className="w-3 h-3" /> ĐÃ SAO CHÉP
+                    <motion.div 
+                      key="checkmark"
+                      initial={{ opacity: 0, scale: 0.5, rotate: -20 }} 
+                      animate={{ opacity: 1, scale: 1, rotate: 0 }} 
+                      exit={{ opacity: 0, scale: 0.5 }} 
+                      className="text-emerald-400 flex items-center justify-center"
+                    >
+                      <Check className="w-3.5 h-3.5" />
                     </motion.div>
                   ) : (
-                    <Copy className="w-3.5 h-3.5 text-emerald-500/20 group-hover:text-emerald-500 transition-colors" />
+                    <motion.div
+                      key="copy"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <Copy className="w-3.5 h-3.5 text-emerald-500/20 group-hover:text-emerald-500 transition-colors" />
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </div>
