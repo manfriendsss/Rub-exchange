@@ -37,9 +37,11 @@
       .splash-logo-container {
         width: 120px;
         height: 120px;
+        aspect-ratio: 1 / 1;
+        flex-shrink: 0;
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         padding: 4px;
-        border-radius: 9999px; /* Force circular */
+        border-radius: 50%; /* Pure circle */
         box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(16,185,129,0.2);
         display: flex;
         align-items: center;
@@ -50,8 +52,9 @@
       .splash-logo-container img {
         width: 100%;
         height: 100%;
+        aspect-ratio: 1 / 1;
         object-fit: cover;
-        border-radius: 9999px; /* Force circular on image too */
+        border-radius: 50%; /* Force circle on image */
       }
       .splash-text {
         color: #ffffff;

@@ -24,7 +24,7 @@ function AnimatedNumber({ value }: { value: number }) {
 
 function AppLogo({ className = "w-12 h-12", iconSize = "w-full h-full" }: { className?: string, iconSize?: string }) {
   return (
-    <div className={`relative flex items-center justify-center overflow-hidden rounded-full ${className}`}>
+    <div className={`relative flex items-center justify-center overflow-hidden rounded-full aspect-square shrink-0 ${className}`}>
       <img 
         src="/app_icon.webp" 
         alt="App Logo" 
