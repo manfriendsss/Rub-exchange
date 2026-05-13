@@ -399,44 +399,68 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Pushing Layout Wrapper */}
       <motion.div 
         animate={{ y: isKeypadOpen ? 0 : 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className="flex flex-col flex-1 relative z-0"
       >
         {/* Header */}
-        <header className={`px-6 pt-10 pb-2 flex items-center justify-between shrink-0 transition-all duration-500 overflow-hidden ${isKeypadOpen ? 'h-16' : 'h-auto'}`}>
-          <div className="flex flex-col">
-            <h1 className={`text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-1 transition-all ${isKeypadOpen ? 'opacity-0 h-0' : 'opacity-100'}`}>ĐỔI TIỀN</h1>
-              <div 
-                onClick={() => {
-                  setTempRate(currentRate.toString());
-                  setIsEditingRate(true);
-                }}
-                className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg text-[10px] font-mono border w-fit active:scale-95 transition-all cursor-pointer ${isAutoRate ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}
-              >
-                <TrendingUp className="w-3 h-3" />
-                <span>Tỷ giá: {new Intl.NumberFormat('vi-VN').format(currentRate)} đ {!isAutoRate && '(Tùy chỉnh)'}</span>
-                <Settings2 className="w-3 h-3 opacity-50 ml-1" />
-              </div>
-          </div>
-          <div className={`flex gap-2 transition-all ${isKeypadOpen ? 'scale-90' : 'scale-100'}`}>
-             <button 
-              onClick={() => {
-                setPickerType('target');
-                setIsPickerOpen(true);
-              }}
-              className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 shadow-lg active:scale-90 transition-transform overflow-hidden"
+        <header className={`px-6 shrink-0 transition-all duration-500 overflow-hidden flex flex-col justify-end ${isKeypadOpen ? 'h-24 pb-5' : 'h-auto pt-10 pb-2'}`}>
+          {isKeypadOpen ? (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-between w-full"
             >
-                <span className="text-xl">{targetCurrency.flag}</span>
-             </button>
-          </div>
+              <div className="flex items-center gap-1.5 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700 shadow-sm backdrop-blur-md">
+                <span className="text-sm leading-none">{isReverse ? targetCurrency.flag : selectedCurrency.flag}</span>
+                <span className="text-[10px] font-black text-white">{isReverse ? targetCurrency.code : selectedCurrency.code}</span>
+                <ChevronRight className="w-3 h-3 text-slate-600 mx-0.5" />
+                <span className="text-sm leading-none">{isReverse ? selectedCurrency.flag : targetCurrency.flag}</span>
+                <span className="text-[10px] font-black text-white">{isReverse ? selectedCurrency.code : targetCurrency.code}</span>
+              </div>
+              
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/5 border border-emerald-500/10 backdrop-blur-md">
+                <TrendingUp className="w-3 h-3 text-emerald-500/50" />
+                <span className="text-[10px] font-mono font-bold text-emerald-400">
+                  {new Intl.NumberFormat('vi-VN').format(currentRate)} đ
+                </span>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="flex items-center justify-between w-full">
+              <div className="flex flex-col">
+                <h1 className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">ĐỔI TIỀN</h1>
+                  <div 
+                    onClick={() => {
+                      setTempRate(currentRate.toString());
+                      setIsEditingRate(true);
+                    }}
+                    className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg text-[10px] font-mono border w-fit active:scale-95 transition-all cursor-pointer ${isAutoRate ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}
+                  >
+                    <TrendingUp className="w-3 h-3" />
+                    <span>Tỷ giá: {new Intl.NumberFormat('vi-VN').format(currentRate)} đ {!isAutoRate && '(Tùy chỉnh)'}</span>
+                    <Settings2 className="w-3 h-3 opacity-50 ml-1" />
+                  </div>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    setPickerType('target');
+                    setIsPickerOpen(true);
+                  }}
+                  className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 shadow-lg active:scale-90 transition-transform overflow-hidden"
+                >
+                    <span className="text-xl">{targetCurrency.flag}</span>
+                </button>
+              </div>
+            </div>
+          )}
         </header>
 
         {/* Main Content Area */}
-        <div className={`flex-1 flex flex-col px-4 pt-1 overflow-hidden transition-all duration-500 ${isKeypadOpen ? 'justify-start pb-[330px]' : 'justify-start pb-6'}`}>
-          <div className={`${isKeypadOpen ? 'space-y-1.5' : 'space-y-6'} shrink-0 px-1 transition-all duration-500`}>
+        <div className={`flex-1 flex flex-col px-4 pt-1 overflow-hidden transition-all duration-500 ${isKeypadOpen ? 'justify-start pb-[327px]' : 'justify-start pb-6'}`}>
+          <div className={`${isKeypadOpen ? 'space-y-0 translate-y-2' : 'space-y-6'} shrink-0 px-1 transition-all duration-500`}>
             {/* Currency Selector Slider - Animated Dial */}
             <div className={`flex items-center justify-between gap-1 overflow-hidden relative transition-all duration-500 ${isKeypadOpen ? 'opacity-0 h-0 mb-0 pointer-events-none' : 'opacity-100 h-24 mt-4 py-4 mb-4'}`}>
               <button 
@@ -483,7 +507,7 @@ export default function App() {
             {/* Amount Display */}
             <div 
               onClick={() => setIsKeypadOpen(true)}
-              className={`rounded-[24px] border transition-all duration-300 relative group active:scale-[0.98] cursor-pointer
+              className={`rounded-[24px] border transition-all duration-300 relative z-[5] group active:scale-[0.98] cursor-pointer
                 ${isKeypadOpen ? 'bg-slate-800 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)] p-3 px-5' : 'bg-slate-800/40 border-slate-800 shadow-inner p-4 px-5'}`}
             >
               <div className="flex items-center justify-between mb-1 text-slate-500">
@@ -513,20 +537,20 @@ export default function App() {
               </AnimatePresence>
             </div>
 
-            <div className="flex justify-center -my-4 relative z-10">
+            <div className="flex justify-center -my-3.5 relative z-10 transition-all duration-500">
               <button 
                 onClick={toggleReverse}
-                className={`p-2.5 rounded-full border shadow-xl transition-all duration-300 active:scale-90 bg-slate-900 group ${isReverse ? 'border-emerald-500' : 'border-slate-800'}`}
+                className={`p-2 rounded-full border shadow-xl transition-all duration-300 active:scale-90 bg-slate-900 group ${isReverse ? 'border-emerald-500' : 'border-slate-800'}`}
               >
                 <motion.div
                   animate={{ rotate: rotation }}
                   transition={{ 
                     duration: 0.6, 
-                    ease: [0.16, 1, 0.3, 1] // Custom expoOut easing for fast start, slow end
+                    ease: [0.16, 1, 0.3, 1] 
                   }}
-                  className="flex items-center justify-center text-slate-600 group-hover:text-emerald-500"
+                  className="flex items-center justify-center text-slate-400 group-hover:text-emerald-500"
                 >
-                  <RefreshCw className={`w-5 h-5 ${isReverse ? 'text-emerald-500' : ''}`} />
+                  <RefreshCw className={`w-4 h-4 ${isReverse ? 'text-emerald-500' : ''}`} />
                 </motion.div>
               </button>
             </div>
@@ -534,7 +558,7 @@ export default function App() {
             {/* Result Card */}
             <div 
               onClick={copyToClipboard}
-              className={`bg-slate-900 rounded-[24px] border border-emerald-500/30 shadow-[0_20px_50px_-20px_rgba(16,185,129,0.3)] relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer group
+              className={`bg-slate-900 rounded-[24px] border border-emerald-500/30 shadow-[0_20px_50px_-20px_rgba(16,185,129,0.3)] relative z-[5] overflow-hidden active:scale-[0.98] transition-all cursor-pointer group
                 ${isKeypadOpen ? 'p-3 px-5' : 'p-4 px-5'}`}
             >
               <div className="flex justify-between items-center mb-1">
