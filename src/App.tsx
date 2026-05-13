@@ -466,7 +466,7 @@ export default function App() {
               <div className="flex gap-2 items-center">
                 <button 
                   onClick={toggleTheme}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border shadow-lg active:scale-90 transition-all duration-300 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-amber-400' : 'bg-slate-50 border-slate-200 text-indigo-600'}`}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border active:scale-90 transition-all duration-300 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-amber-400 shadow-lg' : 'bg-slate-50 border-slate-200 text-indigo-600 shadow-sm'}`}
                 >
                     {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
@@ -475,7 +475,7 @@ export default function App() {
                     setPickerType('target');
                     setIsPickerOpen(true);
                   }}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border shadow-lg active:scale-90 transition-transform overflow-hidden ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border active:scale-90 transition-transform overflow-hidden ${theme === 'dark' ? 'bg-slate-800 border-slate-700 shadow-lg' : 'bg-slate-50 border-slate-200 shadow-sm'}`}
                 >
                     <span className="text-xl">{targetCurrency.flag}</span>
                 </button>

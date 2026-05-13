@@ -14,6 +14,7 @@ export function VirtualKeyboard({ isOpen, onClose, value, onChange, theme }: Vir
   const rows = [
     ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
     ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+    ['Ă', 'Â', 'Đ', 'Ê', 'Ô', 'Ơ', 'Ư'],
     ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACKSPACE']
   ];
 
@@ -35,6 +36,7 @@ export function VirtualKeyboard({ isOpen, onClose, value, onChange, theme }: Vir
   // Common button class to ensure "to đều nhau"
   const btnBaseClass = `h-11 sm:h-12 flex items-center justify-center text-sm font-black rounded-xl border transition-all active:scale-90`;
   const keyBtnClass = `${btnBaseClass} ${theme === 'dark' ? 'bg-slate-800/90 text-white border-slate-700 shadow-[0_2px_0_0_rgba(0,0,0,0.3)]' : 'bg-white text-slate-900 border-slate-200 shadow-[0_2px_0_0_rgba(0,0,0,0.05)]'}`;
+  const specialKeyBtnClass = `${btnBaseClass} ${theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_2px_0_0_rgba(0,0,0,0.2)]' : 'bg-emerald-50 text-emerald-700 border-emerald-100 shadow-[0_2px_0_0_rgba(0,0,0,0.02)]'}`;
 
   return (
     <AnimatePresence>
@@ -48,7 +50,7 @@ export function VirtualKeyboard({ isOpen, onClose, value, onChange, theme }: Vir
         >
           <div className="max-w-md mx-auto flex flex-col gap-1.5">
             {rows.map((row, rIdx) => (
-              <div key={rIdx} className={`flex justify-center gap-1 px-1 ${rIdx === 1 ? 'px-4' : ''}`}>
+              <div key={rIdx} className={`flex justify-center gap-1 px-1 ${rIdx === 1 ? 'px-4' : ''} ${rIdx === 2 ? 'px-6' : ''}`}>
                 {row.map(key => {
                   if (key === 'BACKSPACE') {
                     return (
@@ -62,12 +64,14 @@ export function VirtualKeyboard({ isOpen, onClose, value, onChange, theme }: Vir
                       </motion.button>
                     );
                   }
+                  // Check if it's a Vietnamese character
+                  const isVietnamese = ['Ă', 'Â', 'Đ', 'Ê', 'Ô', 'Ơ', 'Ư'].includes(key);
                   return (
                     <motion.button
                       key={key}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => handleKeyPress(key)}
-                      className={`${keyBtnClass} flex-1`}
+                      className={`${isVietnamese ? specialKeyBtnClass : keyBtnClass} flex-1 min-w-[30px]`}
                     >
                       {key}
                     </motion.button>
