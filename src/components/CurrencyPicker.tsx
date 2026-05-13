@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import { Currency } from '../types';
 import { CURRENCIES } from '../constants';
 
@@ -25,6 +25,17 @@ export function CurrencyPicker({
   onSelectSource,
   onSelectTarget
 }: CurrencyPickerProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCurrencies = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return CURRENCIES;
+    return CURRENCIES.filter(curr => 
+      curr.code.toLowerCase().includes(query) || 
+      curr.name.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -43,37 +54,67 @@ export function CurrencyPicker({
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className={`relative flex-1 rounded-t-[40px] border-t flex flex-col overflow-hidden max-h-[85vh] mt-auto transition-colors duration-500 ${theme === 'dark' ? 'bg-[#1e293b] border-slate-800' : 'bg-slate-50 border-slate-200'}`}
           >
-            <div className="px-8 pt-8 pb-4 flex items-center justify-between">
-              <h3 className={`text-xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{pickerType === 'source' ? 'CHỌN TIỀN GỐC' : 'CHỌN TIỀN ĐẾN'}</h3>
-              <button onClick={onClose} className={`p-2 rounded-full ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} />
-              </button>
-            </div>
-            <div className="px-6 pb-12 overflow-y-auto no-scrollbar grid grid-cols-2 gap-3">
-              {CURRENCIES.map(curr => {
-                const isSelected = pickerType === 'source' ? selectedCurrency.code === curr.code : targetCurrency.code === curr.code;
-                return (
-                  <button
-                    key={curr.code}
-                    onClick={() => {
-                      if (pickerType === 'source') onSelectSource(curr);
-                      else onSelectTarget(curr);
-                      onClose();
-                      if ('vibrate' in navigator) navigator.vibrate(5);
-                    }}
-                    className={`p-4 rounded-3xl border flex flex-col items-center gap-2 transition-all active:scale-95
-                      ${isSelected
-                        ? 'bg-emerald-500/10 border-emerald-500' 
-                        : (theme === 'dark' ? 'bg-slate-800/50 border-slate-700/50' : 'bg-slate-50 border-slate-200 shadow-sm')}`}
-                  >
-                    <span className="text-3xl">{curr.flag}</span>
-                    <div className="text-center">
-                      <div className={`text-sm font-bold leading-none mb-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{curr.code}</div>
-                      <div className="text-[10px] text-slate-500 font-bold uppercase">{curr.name}</div>
-                    </div>
+            <div className="px-8 pt-8 pb-4">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className={`text-xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  {pickerType === 'source' ? 'TIỀN TỆ NGUỒN' : 'TIỀN TỆ ĐÍCH'}
+                </h3>
+                <button onClick={onClose} className={`p-2 rounded-full ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                  <X className={`w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} />
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className={`relative flex items-center px-4 py-3 rounded-2xl border transition-all ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
+                <Search className={`w-5 h-5 mr-3 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên hoặc mã tiền..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`flex-1 bg-transparent outline-none text-sm font-medium ${theme === 'dark' ? 'text-white placeholder:text-slate-600' : 'text-slate-900 placeholder:text-slate-400'}`}
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="p-1">
+                    <X className="w-4 h-4 text-slate-500" />
                   </button>
-                );
-              })}
+                )}
+              </div>
+            </div>
+
+            <div className="px-6 pb-12 overflow-y-auto no-scrollbar grid grid-cols-2 gap-3">
+              {filteredCurrencies.length > 0 ? (
+                filteredCurrencies.map(curr => {
+                  const isSelected = pickerType === 'source' ? selectedCurrency.code === curr.code : targetCurrency.code === curr.code;
+                  return (
+                    <button
+                      key={curr.code}
+                      onClick={() => {
+                        if (pickerType === 'source') onSelectSource(curr);
+                        else onSelectTarget(curr);
+                        onClose();
+                        setSearchQuery('');
+                        if ('vibrate' in navigator) navigator.vibrate(5);
+                      }}
+                      className={`p-4 rounded-3xl border flex flex-col items-center gap-2 transition-all active:scale-95
+                        ${isSelected
+                          ? 'bg-emerald-500/10 border-emerald-500' 
+                          : (theme === 'dark' ? 'bg-slate-800/50 border-slate-700/50' : 'bg-slate-50 border-slate-200 shadow-sm')}`}
+                    >
+                      <span className="text-3xl">{curr.flag}</span>
+                      <div className="text-center">
+                        <div className={`text-sm font-bold leading-none mb-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{curr.code}</div>
+                        <div className="text-[10px] text-slate-500 font-bold uppercase">{curr.name}</div>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="col-span-2 py-10 text-center text-slate-500 text-sm font-medium">
+                  Không tìm thấy loại tiền nào...
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

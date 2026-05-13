@@ -66,7 +66,7 @@ export default function App() {
     },
     {
       title: "Chọn loại tiền tệ",
-      desc: "Vuốt ngang hoặc chạm vào giữa để chọn tiền gốc. Chạm vào nút góc phải trên để chọn tiền muốn đổi sang.",
+      desc: "Vuốt ngang hoặc chạm vào giữa để chọn tiền tệ nguồn. Chạm vào nút góc phải trên để chọn tiền tệ đích.",
       icon: <DollarSign className="w-12 h-12 text-emerald-500" />,
     },
     {
@@ -629,9 +629,15 @@ export default function App() {
 
       {/* Keypad Panel */}
       <Keypad 
-        isOpen={isKeypadOpen} 
-        onClose={() => setIsKeypadOpen(false)} 
-        setInputValue={setInputValue} 
+        isOpen={isKeypadOpen || isEditingRate} 
+        onClose={() => {
+          if (isEditingRate) {
+            handleRateUpdate();
+          } else {
+            setIsKeypadOpen(false);
+          }
+        }} 
+        setInputValue={isEditingRate ? setTempRate : setInputValue} 
         theme={theme} 
       />
 
@@ -650,7 +656,7 @@ export default function App() {
       {/* Rate Editing Popup */}
       <AnimatePresence>
         {isEditingRate && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center px-6">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center px-6 pb-[320px]">
             <motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
@@ -662,29 +668,23 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className={`relative w-full max-w-sm border p-6 rounded-[32px] shadow-2xl transition-colors duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
+              className={`relative w-full max-w-sm border p-5 rounded-[28px] shadow-2xl transition-colors duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
             >
-              <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Chỉnh sửa tỷ giá</h3>
-              <p className="text-xs text-slate-500 mb-6 uppercase tracking-wider">Tỷ giá cho 1 {selectedCurrency.code} sang VNĐ</p>
+              <h3 className={`text-base font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Chỉnh sửa tỷ giá</h3>
+              <p className="text-[10px] text-slate-500 mb-4 uppercase tracking-wider">Tỷ giá cho 1 {selectedCurrency.code} sang VNĐ</p>
               
-              <div className={`p-4 rounded-2xl border mb-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                <input 
-                  type="number"
-                  inputMode="decimal"
-                  value={tempRate}
-                  onChange={(e) => setTempRate(e.target.value)}
-                  autoFocus
-                  className={`w-full bg-transparent text-3xl font-mono font-bold outline-none ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}
-                  placeholder="0"
-                />
-                <div className="text-[10px] text-slate-500 mt-1 font-bold">VNĐ / {selectedCurrency.code}</div>
+              <div className={`p-3 rounded-xl border mb-4 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                <div className={`text-2xl font-mono font-bold truncate ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                  {tempRate || '0'}
+                </div>
+                <div className="text-[9px] text-slate-500 mt-0.5 font-bold">VNĐ / {selectedCurrency.code}</div>
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 {!isAutoRate && (
                   <button 
                     onClick={setAutoMode}
-                    className={`w-full py-3 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] mb-1 active:scale-95 transition-all border
+                    className={`w-full py-2 rounded-xl text-[9px] font-bold uppercase tracking-[0.1em] active:scale-95 transition-all border
                       ${theme === 'dark' 
                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                         : 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -694,18 +694,18 @@ export default function App() {
                   </button>
                 )}
                 
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <button 
                     onClick={() => setIsEditingRate(false)}
-                    className={`flex-1 py-4 font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all ${theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-600'}`}
+                    className={`flex-1 py-3 font-bold rounded-xl text-[10px] uppercase tracking-widest active:scale-95 transition-all ${theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-600'}`}
                   >
                     HỦY
                   </button>
                   <button 
                     onClick={handleRateUpdate}
-                    className="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-2xl text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-emerald-900/20"
+                    className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-emerald-900/20"
                   >
-                    LƯU THỦ CÔNG
+                    LƯU
                   </button>
                 </div>
               </div>

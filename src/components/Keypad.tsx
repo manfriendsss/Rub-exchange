@@ -11,7 +11,7 @@ interface KeypadProps {
 
 export function Keypad({ isOpen, onClose, setInputValue, theme }: KeypadProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[50]">
+    <div className="fixed bottom-0 left-0 right-0 z-[150]">
       <AnimatePresence>
         {isOpen && (
           <motion.div 
