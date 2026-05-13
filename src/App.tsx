@@ -45,9 +45,13 @@ function AnimatedNumber({ value }: { value: number }) {
 
 function AppLogo({ className = "w-12 h-12", iconSize = "w-full h-full" }: { className?: string, iconSize?: string }) {
   return (
-    <div className={`relative flex items-center justify-center ${className}`}>
-      <RefreshCw className={`absolute inset-0 ${iconSize} text-emerald-500/20 animate-[spin_8s_linear_infinite]`} />
-      <span className="text-emerald-500 font-black text-2xl mb-1 relative z-10 select-none">₫</span>
+    <div className={`relative flex items-center justify-center overflow-hidden rounded-[24%] ${className}`}>
+      <img 
+        src="/app_icon.webp" 
+        alt="App Logo" 
+        className={`${iconSize} object-cover shadow-lg`}
+        referrerPolicy="no-referrer"
+      />
     </div>
   );
 }
@@ -104,7 +108,7 @@ export default function App() {
     {
       title: "Cài đặt ứng dụng",
       desc: "Sử dụng nút cài đặt hoặc trình duyệt để thêm ứng dụng vào màn hình chính để dùng mượt mà nhất.",
-      icon: <AppLogo className="w-16 h-16" iconSize="w-16 h-16" />,
+      icon: <AppLogo className="w-20 h-20" iconSize="w-20 h-20" />,
     },
   ];
 

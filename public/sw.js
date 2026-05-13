@@ -2,7 +2,8 @@ const CACHE_NAME = 'doi-tien-v1';
 const ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/app_icon.webp'
 ];
 
 self.addEventListener('install', (event) => {
