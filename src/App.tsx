@@ -627,7 +627,7 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="font-bold text-white text-sm">Cài đặt ứng dụng</h3>
-                  <p className="text-[10px] text-slate-400">Thêm vào màn hình chính để dùng ngay</p>
+                  <p className="text-[10px] text-slate-400">Giao diện mượt mà nhất khi cài đặt. Lưu ý: Hãy mở link ở trình duyệt chính (Chrome/Safari) để có thể cài đặt.</p>
                 </div>
               </div>
               <button onClick={() => { setShowInstallPopup(false); localStorage.setItem('pwa_install_dismissed', 'true'); }} className="p-1 text-slate-500 hover:text-white">

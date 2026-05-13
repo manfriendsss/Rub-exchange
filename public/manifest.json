@@ -1,11 +1,14 @@
 {
+  "id": "com.doitien.converter",
   "name": "Đổi tiền",
   "short_name": "Đổi tiền",
-  "description": "Ứng dụng quy đổi tiền tệ nhanh chóng",
-  "start_url": "/",
+  "description": "Quy đổi tiền tệ mượt mà, chuyên nghiệp",
+  "start_url": "/?pwa=true",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
   "background_color": "#0f172a",
-  "theme_color": "#10b981",
+  "theme_color": "#0f172a",
   "icons": [
     {
       "src": "https://img.icons8.com/parakeet/192/10b981/currency-exchange.png",
@@ -20,10 +23,18 @@
       "purpose": "any"
     },
     {
-      "src": "https://img.icons8.com/parakeet-line/192/10b981/currency-exchange.png",
+      "src": "https://img.icons8.com/parakeet/192/10b981/currency-exchange.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://img.icons8.com/parakeet/512/10b981/currency-exchange.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ]
 }
