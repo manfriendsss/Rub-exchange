@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, animate } from 'motion/react';
 import { X, ArrowDown, Coins, TrendingUp, Check, Copy, Settings2, ChevronRight, ChevronLeft, DollarSign, Calculator, Smartphone, RefreshCw, Sun, Moon } from 'lucide-react';
 
@@ -7,6 +7,42 @@ import { CURRENCIES } from './constants';
 import { AutoScaleText } from './components/AutoScaleText';
 import { Keypad } from './components/Keypad';
 import { CurrencyPicker } from './components/CurrencyPicker';
+
+function evaluateExpression(input: string): number {
+  const sanitized = input.replace(/[^0-9+\-*/.]/g, '');
+  if (!sanitized) return 0;
+  const tokens = sanitized.match(/(\d+(\.\d+)?)|[+\-*/]/g);
+  if (!tokens || tokens.length === 0) return 0;
+
+  const values: number[] = [];
+  const ops: string[] = [];
+  const precedence = (op: string) => (op === '+' || op === '-' ? 1 : 2);
+
+  const applyOp = () => {
+    const op = ops.pop();
+    const b = values.pop();
+    const a = values.pop();
+    if (!op || a === undefined || b === undefined) return;
+    if (op === '+') values.push(a + b);
+    else if (op === '-') values.push(a - b);
+    else if (op === '*') values.push(a * b);
+    else if (op === '/') values.push(b === 0 ? 0 : a / b);
+  };
+
+  for (const token of tokens) {
+    if (/^\d+(\.\d+)?$/.test(token)) {
+      values.push(Number(token));
+      continue;
+    }
+    while (ops.length > 0 && precedence(ops[ops.length - 1]) >= precedence(token)) {
+      applyOp();
+    }
+    ops.push(token);
+  }
+
+  while (ops.length > 0) applyOp();
+  return Number.isFinite(values[0]) ? values[0] : 0;
+}
 
 function AnimatedNumber({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(value);
@@ -91,6 +127,55 @@ export default function App() {
     },
   ];
 
+  const refreshRates = async (forceManualRefresh = false) => {
+    try {
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await response.json();
+      const usdToVnd = data.rates?.VND;
+      if (!usdToVnd) return;
+
+      const currentManualRates = JSON.parse(localStorage.getItem('manual_rates_v1') || '{}');
+      const savedRates = JSON.parse(localStorage.getItem('currency_rates_v3') || '{}') as Record<string, number>;
+
+      setRates((prev) => {
+        const fallbackRates = { ...savedRates, ...prev };
+        const newRates: Record<string, number> = {};
+
+        CURRENCIES.forEach((c) => {
+          if (currentManualRates[c.code] && !forceManualRefresh) {
+            newRates[c.code] = fallbackRates[c.code] ?? c.defaultRate;
+            return;
+          }
+
+          if (c.code === 'VND') {
+            newRates[c.code] = 1;
+            return;
+          }
+
+          if (c.code === 'USD') {
+            newRates[c.code] = Math.round(usdToVnd);
+            return;
+          }
+
+          const usdToTarget = data.rates?.[c.code];
+          if (usdToTarget) {
+            newRates[c.code] = Math.round(usdToVnd / usdToTarget);
+          } else {
+            newRates[c.code] = fallbackRates[c.code] ?? c.defaultRate;
+          }
+        });
+
+        return newRates;
+      });
+    } catch (error) {
+      console.error('Failed to fetch online rates', error);
+    } finally {
+      if (forceManualRefresh) {
+        setTimeout(() => setIsRefreshing(false), 500);
+      }
+    }
+  };
+
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme_preference') as 'light' | 'dark' | null;
     if (savedTheme) {
@@ -131,48 +216,12 @@ export default function App() {
       if (found) setTargetCurrency(found);
     }
     
-    const updateRates = async () => {
-      if (isRefreshing) setIsRefreshing(true);
+    refreshRates(false);
+  }, []);
 
-      try {
-        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-        const data = await response.json();
-        const usdToVnd = data.rates.VND;
-        
-        if (usdToVnd) {
-          const newRates: Record<string, number> = {};
-          const currentManualRates = JSON.parse(localStorage.getItem('manual_rates_v1') || '{}');
-          
-          CURRENCIES.forEach(c => {
-            if (currentManualRates[c.code] && !isRefreshing) {
-              newRates[c.code] = rates[c.code] || savedRates ? JSON.parse(savedRates!)[c.code] || c.defaultRate : c.defaultRate;
-              return;
-            }
-
-            if (c.code === 'VND') {
-              newRates[c.code] = 1;
-            } else if (c.code === 'USD') {
-              newRates[c.code] = Math.round(usdToVnd);
-            } else {
-              const usdToTarget = data.rates[c.code];
-              if (usdToTarget) {
-                newRates[c.code] = Math.round(usdToVnd / usdToTarget);
-              } else {
-                newRates[c.code] = savedRates ? JSON.parse(savedRates)[c.code] || c.defaultRate : c.defaultRate;
-              }
-            }
-          });
-          setRates(newRates);
-          localStorage.setItem('currency_rates_v3', JSON.stringify(newRates));
-        }
-      } catch (error) {
-        console.error('Failed to fetch online rates', error);
-      } finally {
-        setTimeout(() => setIsRefreshing(false), 500);
-      }
-    };
-
-    updateRates();
+  useEffect(() => {
+    if (!isRefreshing) return;
+    refreshRates(true);
   }, [isRefreshing]);
 
   useEffect(() => {
@@ -231,10 +280,7 @@ export default function App() {
 
   const parsedValue = useMemo(() => {
     try {
-      const cleanedInput = inputValue.replace(/[^0-9+\-*/.]/g, '');
-      if (!cleanedInput) return 0;
-      const result = Function(`"use strict"; return (${cleanedInput})`)();
-      return typeof result === 'number' && !isNaN(result) ? result : 0;
+      return evaluateExpression(inputValue);
     } catch {
       return parseFloat(inputValue) || 0;
     }
@@ -279,17 +325,7 @@ export default function App() {
     localStorage.setItem('manual_rates_v1', JSON.stringify(newManualRates));
     
     try {
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-      const data = await response.json();
-      const usdToVnd = data.rates.VND;
-      if (usdToVnd) {
-        const newRates: Record<string, number> = { ...rates };
-        const usdToTarget = data.rates[selectedCurrency.code];
-        if (usdToTarget) {
-          newRates[selectedCurrency.code] = Math.round(usdToVnd / usdToTarget);
-          setRates(newRates);
-        }
-      }
+      await refreshRates(true);
       setIsEditingRate(false);
     } catch (error) {
       console.error('Failed to update rate automatically', error);
