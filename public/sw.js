@@ -1,6 +1,6 @@
-const STATIC_CACHE = 'doi-tien-static-v2';
-const RUNTIME_CACHE = 'doi-tien-runtime-v2';
-const ASSETS = ['/', '/index.html', '/manifest.json', '/app_icon.webp', '/app_icon.svg'];
+const STATIC_CACHE = 'doi-tien-static-v3';
+const RUNTIME_CACHE = 'doi-tien-runtime-v3';
+const ASSETS = ['/', '/index.html', '/manifest.json', '/app_icon.webp', '/app_icon.png', '/app_icon_180.png', '/app_icon_192.png', '/app_icon_512.png', '/app_icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -72,3 +72,4 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(request))
   );
 });
+
