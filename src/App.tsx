@@ -100,11 +100,6 @@ export default function App() {
       setTheme(prefersDark ? 'dark' : 'light');
     }
 
-    // Hide splash screen
-    setTimeout(() => {
-      document.body.classList.add('app-loaded');
-    }, 500);
-
     const tutorialSeen = localStorage.getItem('tutorial_seen_v2');
     if (!tutorialSeen) {
       setShowTutorial(true);
