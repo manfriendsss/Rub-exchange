@@ -7,42 +7,8 @@ import { CURRENCIES } from './constants';
 import { AutoScaleText } from './components/AutoScaleText';
 import { Keypad } from './components/Keypad';
 import { CurrencyPicker } from './components/CurrencyPicker';
-
-function evaluateExpression(input: string): number {
-  const sanitized = input.replace(/[^0-9+\-*/.]/g, '');
-  if (!sanitized) return 0;
-  const tokens = sanitized.match(/(\d+(\.\d+)?)|[+\-*/]/g);
-  if (!tokens || tokens.length === 0) return 0;
-
-  const values: number[] = [];
-  const ops: string[] = [];
-  const precedence = (op: string) => (op === '+' || op === '-' ? 1 : 2);
-
-  const applyOp = () => {
-    const op = ops.pop();
-    const b = values.pop();
-    const a = values.pop();
-    if (!op || a === undefined || b === undefined) return;
-    if (op === '+') values.push(a + b);
-    else if (op === '-') values.push(a - b);
-    else if (op === '*') values.push(a * b);
-    else if (op === '/') values.push(b === 0 ? 0 : a / b);
-  };
-
-  for (const token of tokens) {
-    if (/^\d+(\.\d+)?$/.test(token)) {
-      values.push(Number(token));
-      continue;
-    }
-    while (ops.length > 0 && precedence(ops[ops.length - 1]) >= precedence(token)) {
-      applyOp();
-    }
-    ops.push(token);
-  }
-
-  while (ops.length > 0) applyOp();
-  return Number.isFinite(values[0]) ? values[0] : 0;
-}
+import { evaluateExpression } from './utils/expression';
+import { useExchangeRates } from './hooks/useExchangeRates';
 
 function AnimatedNumber({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(value);
@@ -76,8 +42,7 @@ export default function App() {
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(CURRENCIES[1]);
   const [targetCurrency, setTargetCurrency] = useState<Currency>(CURRENCIES[0]);
   const [isReverse, setIsReverse] = useState(false);
-  const [rates, setRates] = useState<Record<string, number>>({});
-  const [manualRates, setManualRates] = useState<Record<string, boolean>>({});
+  const { rates, manualRates, isRefreshing, triggerRefresh, setManualRate, setAutoRate } = useExchangeRates();
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
   const [isEditingRate, setIsEditingRate] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -90,7 +55,6 @@ export default function App() {
   const [showInstallPopup, setShowInstallPopup] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [pullY, setPullY] = useState(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [startY, setStartY] = useState(0);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
@@ -127,55 +91,6 @@ export default function App() {
     },
   ];
 
-  const refreshRates = async (forceManualRefresh = false) => {
-    try {
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-      const data = await response.json();
-      const usdToVnd = data.rates?.VND;
-      if (!usdToVnd) return;
-
-      const currentManualRates = JSON.parse(localStorage.getItem('manual_rates_v1') || '{}');
-      const savedRates = JSON.parse(localStorage.getItem('currency_rates_v3') || '{}') as Record<string, number>;
-
-      setRates((prev) => {
-        const fallbackRates = { ...savedRates, ...prev };
-        const newRates: Record<string, number> = {};
-
-        CURRENCIES.forEach((c) => {
-          if (currentManualRates[c.code] && !forceManualRefresh) {
-            newRates[c.code] = fallbackRates[c.code] ?? c.defaultRate;
-            return;
-          }
-
-          if (c.code === 'VND') {
-            newRates[c.code] = 1;
-            return;
-          }
-
-          if (c.code === 'USD') {
-            newRates[c.code] = Math.round(usdToVnd);
-            return;
-          }
-
-          const usdToTarget = data.rates?.[c.code];
-          if (usdToTarget) {
-            newRates[c.code] = Math.round(usdToVnd / usdToTarget);
-          } else {
-            newRates[c.code] = fallbackRates[c.code] ?? c.defaultRate;
-          }
-        });
-
-        return newRates;
-      });
-    } catch (error) {
-      console.error('Failed to fetch online rates', error);
-    } finally {
-      if (forceManualRefresh) {
-        setTimeout(() => setIsRefreshing(false), 500);
-      }
-    }
-  };
-
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme_preference') as 'light' | 'dark' | null;
     if (savedTheme) {
@@ -190,20 +105,6 @@ export default function App() {
       setShowTutorial(true);
     }
 
-    const savedManualRates = localStorage.getItem('manual_rates_v1');
-    if (savedManualRates) {
-      setManualRates(JSON.parse(savedManualRates));
-    }
-    
-    const savedRates = localStorage.getItem('currency_rates_v3');
-    if (savedRates) {
-      setRates(JSON.parse(savedRates));
-    } else {
-      const initialRates: Record<string, number> = {};
-      CURRENCIES.forEach(c => initialRates[c.code] = c.defaultRate);
-      setRates(initialRates);
-    }
-
     const lastCurrency = localStorage.getItem('last_selected_currency');
     if (lastCurrency) {
       const found = CURRENCIES.find(c => c.code === lastCurrency);
@@ -216,19 +117,7 @@ export default function App() {
       if (found) setTargetCurrency(found);
     }
     
-    refreshRates(false);
   }, []);
-
-  useEffect(() => {
-    if (!isRefreshing) return;
-    refreshRates(true);
-  }, [isRefreshing]);
-
-  useEffect(() => {
-    if (Object.keys(rates).length > 0) {
-      localStorage.setItem('currency_rates_v3', JSON.stringify(rates));
-    }
-  }, [rates]);
 
   useEffect(() => {
     localStorage.setItem('last_selected_currency', selectedCurrency.code);
@@ -311,21 +200,14 @@ export default function App() {
   const handleRateUpdate = () => {
     const newRate = parseFloat(tempRate);
     if (!isNaN(newRate) && newRate > 0) {
-      setRates(prev => ({ ...prev, [selectedCurrency.code]: newRate }));
-      const newManualRates = { ...manualRates, [selectedCurrency.code]: true };
-      setManualRates(newManualRates);
-      localStorage.setItem('manual_rates_v1', JSON.stringify(newManualRates));
+      setManualRate(selectedCurrency.code, newRate);
       setIsEditingRate(false);
     }
   };
 
   const setAutoMode = async () => {
-    const newManualRates = { ...manualRates, [selectedCurrency.code]: false };
-    setManualRates(newManualRates);
-    localStorage.setItem('manual_rates_v1', JSON.stringify(newManualRates));
-    
     try {
-      await refreshRates(true);
+      await setAutoRate(selectedCurrency.code);
       setIsEditingRate(false);
     } catch (error) {
       console.error('Failed to update rate automatically', error);
@@ -398,7 +280,7 @@ export default function App() {
 
   const handleTouchEnd = () => {
     if (pullY > 60) {
-      setIsRefreshing(true);
+      triggerRefresh();
       if ('vibrate' in navigator) navigator.vibrate(20);
     }
     setPullY(0);
